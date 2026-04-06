@@ -1,0 +1,28 @@
+### Windows ###
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+### macOS ###
+.DS_Store
+
+### IDEs / Editors ###
+.idea/
+.vscode/
+*.swp
+*~
+*.bak
+
+### PHP / Apache / Local Server ###
+error_log
+access_log
+php_errors.log
+
+### User Uploads / Media ###
+# หากมีการอัปโหลดรูปภาพลงไปในอนาคต แนะนำให้เพิ่มโฟลเดอร์เหล่านั้นที่ไม่ต้องการให้ไปรกบน Github ด้วย
+# uploads/
+# assets/uploads/
+
+### Project Configs ###
+# ปกติมักจะ ignore ไฟล์ที่เก็บ Password Database โดยเฉพาะ หากจะ publish เป็น public
+# config/db_connect.php
