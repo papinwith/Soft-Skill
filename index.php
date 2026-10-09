@@ -3,7 +3,7 @@ require_once 'config/db.php';
 if(isset($_SESSION['user_id'])) {
     if($_SESSION['role'] === 'admin') header('Location: admin/dashboard.php');
     elseif($_SESSION['role'] === 'manager') header('Location: manager/dashboard.php');
-    else header('Location: student/dashboard.php');
+    else header('Location: student/profile.php');
     exit;
 }
 include 'includes/header.php';
@@ -22,6 +22,7 @@ include 'includes/header.php';
                     <div class="alert alert-success"><?php echo htmlspecialchars($_GET['success']); ?></div>
                 <?php endif; ?>
                 <form action="auth_action.php" method="POST">
+                    <?= csrf_field() ?>
                     <input type="hidden" name="action" value="login">
                     <div class="mb-3">
                         <label class="form-label fw-bold">ชื่อผู้ใช้งาน (Username) หรือ รหัสนักศึกษา</label>
@@ -32,6 +33,9 @@ include 'includes/header.php';
                         <input type="password" name="password" class="form-control" required placeholder="รหัสผ่าน">
                     </div>
                     <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">เข้าสู่ระบบ</button>
+                    <div class="text-center mt-2">
+                        <a href="forgot_password.php" class="text-decoration-none">ลืมรหัสผ่าน? (Forgot Password)</a>
+                    </div>
                     <div class="text-center mt-3">
                         <span>ยังไม่มีบัญชีผู้ใช้งานใช่ไหม? <a href="register.php" class="text-decoration-none">สมัครสมาชิกสำหรับนักศึกษา</a></span>
                     </div>

@@ -3,59 +3,82 @@ require_once '../config/db.php';
 require_once '../includes/functions.php';
 check_login('student');
 $student_id = $_SESSION['user_id'];
-$activity_id = $_GET['activity_id'] ?? 0;
+$activity_id = (int)($_GET['activity_id'] ?? 0);
 
-// Fetch activities the student has assessed
-$activities = $pdo->prepare("SELECT DISTINCT a.id, a.title FROM activities a JOIN assessment_responses ar ON a.id = ar.activity_id WHERE ar.student_id = ?");
+$activities = $pdo->prepare("SELECT DISTINCT a.id, a.title FROM activities a JOIN student_assessments sa ON a.id = sa.activity_id WHERE sa.student_id = ?");
 $activities->execute([$student_id]);
 $activities = $activities->fetchAll();
+$allowed_ids = array_map('intval', array_column($activities, 'id'));
 
 if (!$activity_id && !empty($activities)) {
-    $activity_id = $activities[0]['id'];
+    $activity_id = (int)$activities[0]['id'];
+}
+if ($activity_id && !in_array($activity_id, $allowed_ids, true)) {
+    $activity_id = 0;
 }
 
-$chartData = [];
-$labels = [];
-$preData = [];
-$postData = [];
-$reports = [];
+$activityTitle = '';
+foreach ($activities as $a) if ((int)$a['id'] === $activity_id) $activityTitle = $a['title'];
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'regenerate' && $activity_id) {
+    $rtype = ($_POST['type'] ?? '') === 'post' ? 'post' : 'pre';
+    $rows = get_skill_scores($pdo, $student_id, $activity_id, $rtype);
+    if ($rows) {
+        $preRows = $rtype === 'post' ? get_skill_scores($pdo, $student_id, $activity_id, 'pre') : null;
+        save_ai_report($pdo, $student_id, $activity_id, $rtype, get_ai_analysis($rows, $rtype, $_SESSION['name'], $activityTitle, $preRows));
+    }
+    header("Location: analysis_report.php?activity_id=$activity_id&success=Regenerated"); exit;
+}
+
+$preRows = $postRows = $reports = $recommended = [];
 if ($activity_id) {
-    // Get Pre scores
-    $preScores = $pdo->prepare("SELECT s.skill_name, SUM(ar.score) as total FROM assessment_responses ar JOIN assessment_questions q ON ar.question_id = q.id JOIN soft_skills s ON q.skill_id = s.id WHERE ar.student_id = ? AND ar.activity_id = ? AND ar.type = 'pre' GROUP BY s.id ORDER BY s.id");
-    $preScores->execute([$student_id, $activity_id]);
-    foreach($preScores->fetchAll() as $row) {
-        $labels[] = $row['skill_name'];
-        $preData[] = $row['total'];
-    }
+    $preRows = get_skill_scores($pdo, $student_id, $activity_id, 'pre');
+    $postRows = get_skill_scores($pdo, $student_id, $activity_id, 'post');
 
-    // Get Post scores
-    $postScores = $pdo->prepare("SELECT s.skill_name, SUM(ar.score) as total FROM assessment_responses ar JOIN assessment_questions q ON ar.question_id = q.id JOIN soft_skills s ON q.skill_id = s.id WHERE ar.student_id = ? AND ar.activity_id = ? AND ar.type = 'post' GROUP BY s.id ORDER BY s.id");
-    $postScores->execute([$student_id, $activity_id]);
-    foreach($postScores->fetchAll() as $row) {
-        $postData[] = $row['total'];
-    }
-
-    // Get AI Reports
     $aiSt = $pdo->prepare("SELECT type, analysis_text, recommendation_text FROM ai_reports WHERE student_id = ? AND activity_id = ?");
     $aiSt->execute([$student_id, $activity_id]);
     foreach($aiSt->fetchAll() as $r) {
         $reports[$r['type']] = $r;
     }
+    $latest = $postRows ?: $preRows;
+    $recommended = recommend_activities($pdo, $student_id, weak_skills($latest, 2));
 }
 
-// Ensure array sizes match for ChartJS
-if (empty($postData) && !empty($preData)) {
-    $postData = array_fill(0, count($preData), 0);
-} elseif (empty($preData) && !empty($postData)) {
-    $preData = array_fill(0, count($postData), 0);
-}
+$labels = array_column($preRows ?: $postRows, 'skill_name');
+$preData = $preRows ? array_column($preRows, 'pct') : array_fill(0, count($labels), 0);
+$postData = $postRows ? array_column($postRows, 'pct') : array_fill(0, count($labels), 0);
+$postByName = $preByName = [];
+foreach ($postRows as $r) $postByName[$r['skill_name']] = $r;
+foreach ($preRows as $r) $preByName[$r['skill_name']] = $r;
 
 include '../includes/header.php';
-?>
-<div class="d-flex justify-content-between mb-4 mt-3">
-    <h3>รายงานผลวิเคราะห์ Soft Skill <span class="badge bg-secondary">Generative AI</span></h3>
+
+function report_box($title, $class, $report, $activity_id, $type) { ?>
+    <div class="card shadow-sm border-<?= $class ?> mb-4">
+        <div class="card-header bg-<?= $class ?> text-white fw-bold py-3 d-flex justify-content-between align-items-center">
+            <span><?= $title ?></span>
+            <form method="POST" class="m-0">
+                <?= csrf_field() ?>
+                <input type="hidden" name="action" value="regenerate"><input type="hidden" name="type" value="<?= $type ?>">
+                <button class="btn btn-sm btn-light" onclick="return confirm('วิเคราะห์ใหม่ด้วย AI? อาจใช้เวลาสักครู่');">วิเคราะห์ใหม่ด้วย AI</button>
+            </form>
+        </div>
+        <div class="card-body bg-light">
+            <h6 class="fw-bold text-dark">ผลการวิเคราะห์ (Analysis)</h6>
+            <?php if (!$report): ?><p class="text-muted mb-0">ยังไม่มีรายงานวิเคราะห์ (ระบบ AI อาจขัดข้องระหว่างส่งแบบประเมิน) กดปุ่ม "วิเคราะห์ใหม่ด้วย AI" เพื่อสร้างรายงาน</p><?php else: ?>
+            <p class="text-secondary"><?= nl2br(htmlspecialchars($report['analysis_text'] ?? '')) ?></p>
+            <hr>
+            <h6 class="fw-bold text-dark">คำแนะนำเพื่อการพัฒนา (Recommendation)</h6>
+            <p class="text-secondary mb-0"><?= nl2br(htmlspecialchars($report['recommendation_text'] ?? '')) ?></p>
+            <?php endif; ?>
+        </div>
+    </div>
+<?php } ?>
+<div class="d-flex justify-content-between align-items-center mb-4 mt-3">
+    <h3 class="mb-0">รายงานผลวิเคราะห์ Soft Skill <span class="badge bg-secondary">Generative AI</span></h3>
+    <a href="activities.php" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> กลับ</a>
 </div>
+<?php if (isset($_GET['success'])): ?><div class="alert alert-success">ดำเนินการเรียบร้อยแล้ว</div><?php endif; ?>
 
 <div class="card shadow-sm mb-4 border-0">
     <div class="card-body bg-light">
@@ -71,9 +94,6 @@ include '../includes/header.php';
                     <?php endforeach; ?>
                 </select>
             </div>
-            <div class="col-md-6 text-end d-none d-md-block">
-                <i class="bi bi-robot text-primary" style="font-size: 2rem;"></i>
-            </div>
         </form>
     </div>
 </div>
@@ -82,58 +102,63 @@ include '../includes/header.php';
 <div class="row">
     <div class="col-md-5 mb-4">
         <div class="card shadow-sm border-0 h-100">
-            <div class="card-header bg-dark text-white fw-bold py-3"><i class="bi bi-graph-up"></i> แผนภูมิเปรียบเทียบทักษะ 5 ด้าน</div>
+            <div class="card-header bg-dark text-white fw-bold py-3">แผนภูมิเปรียบเทียบทักษะ (% คะแนน)</div>
             <div class="card-body d-flex align-items-center justify-content-center">
                 <canvas id="radarChart" style="max-height: 400px;"></canvas>
             </div>
         </div>
     </div>
-    
-    <div class="col-md-7 mb-4">
-        <div class="row h-100">
-            <!-- Pre Report -->
-            <?php if(isset($reports['pre'])): ?>
-            <div class="col-12 mb-4">
-                <div class="card shadow-sm border-info h-100">
-                    <div class="card-header bg-info text-white fw-bold py-3">
-                        <i class="bi bi-robot"></i> วิเคราะห์ทักษะ "ก่อนเข้าร่วมกิจกรรม" (Pre-test)
-                    </div>
-                    <div class="card-body bg-light">
-                        <h6 class="fw-bold text-dark"><i class="bi bi-search text-primary"></i> ผลการวิเคราะห์ (Analysis)</h6>
-                        <p class="text-secondary"><?= nl2br(htmlspecialchars($reports['pre']['analysis_text'])) ?></p>
-                        <hr>
-                        <h6 class="fw-bold text-dark"><i class="bi bi-lightbulb text-warning"></i> คำแนะนำเพื่อการพัฒนา (Recommendation)</h6>
-                        <p class="text-secondary"><?= nl2br(htmlspecialchars($reports['pre']['recommendation_text'])) ?></p>
-                    </div>
-                </div>
-            </div>
-            <?php endif; ?>
 
-            <!-- Post Report -->
-            <?php if(isset($reports['post'])): ?>
-            <div class="col-12">
-                <div class="card shadow-sm border-success h-100">
-                    <div class="card-header bg-success text-white fw-bold py-3">
-                        <i class="bi bi-robot"></i> วิเคราะห์พัฒนาการ "หลังเข้าร่วมกิจกรรม" (Post-test)
-                    </div>
-                    <div class="card-body bg-light">
-                        <h6 class="fw-bold text-dark"><i class="bi bi-search text-primary"></i> ผลการวิเคราะห์ (Analysis)</h6>
-                        <p class="text-secondary"><?= nl2br(htmlspecialchars($reports['post']['analysis_text'])) ?></p>
-                        <hr>
-                        <h6 class="fw-bold text-dark"><i class="bi bi-lightbulb text-warning"></i> คำแนะนำเพื่อการพัฒนา (Recommendation)</h6>
-                        <p class="text-secondary"><?= nl2br(htmlspecialchars($reports['post']['recommendation_text'])) ?></p>
-                    </div>
-                </div>
+    <div class="col-md-7 mb-4">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-white fw-bold">ระดับทักษะแต่ละด้าน</div>
+            <div class="card-body py-2 border-bottom"><?= skill_level_legend_html() ?></div>
+            <div class="table-responsive">
+            <table class="table mb-0 align-middle">
+                <thead class="table-light"><tr><th>ทักษะ</th><th>ก่อน (Pre)</th><th>หลัง (Post)</th><th>ระดับ</th></tr></thead>
+                <tbody>
+                <?php foreach (($postRows ?: $preRows) as $r):
+                    $pre = $preByName[$r['skill_name']] ?? null; $post = $postByName[$r['skill_name']] ?? null; ?>
+                    <tr>
+                        <td><?= htmlspecialchars($r['skill_name']) ?></td>
+                        <td><?= $pre ? $pre['pct'] . '%' : '-' ?></td>
+                        <td><?= $post ? $post['pct'] . '%' : '-' ?></td>
+                        <td><span class="badge bg-<?= $r['group']['class'] ?>"><?= $r['group']['label'] ?></span></td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
             </div>
-            <?php else: ?>
-            <div class="col-12">
-                <div class="alert alert-warning border-warning border-2 h-100 d-flex flex-column justify-content-center align-items-center">
-                    <i class="bi bi-exclamation-triangle" style="font-size: 2rem;"></i>
-                    <p class="mt-2 fw-bold text-center">ท่านยังไม่ได้ทำแบบประเมินหลังเข้าร่วมกิจกรรม (Post-test)</p>
-                    <a href="activities.php" class="btn btn-warning">ตรวจสอบสถานะเพื่อทำแบบประเมิน</a>
-                </div>
+        </div>
+
+        <?php $weak = weak_skills($postRows ?: $preRows, 2); ?>
+        <div class="card shadow-sm border-warning mb-4">
+            <div class="card-header bg-warning fw-bold">จุดที่ควรพัฒนา</div>
+            <div class="card-body">
+                <?php foreach ($weak as $w): ?><span class="badge bg-warning text-dark me-1"><?= htmlspecialchars($w['skill_name']) ?> (<?= $w['pct'] ?>%)</span><?php endforeach; ?>
+                <?php if (empty($weak)): ?><span class="text-success fw-bold">ทุกทักษะอยู่ในระดับดีเยี่ยม ไม่มีจุดที่ต้องเร่งพัฒนา</span><?php endif; ?>
             </div>
-            <?php endif; ?>
+        </div>
+
+        <?php if($preRows) report_box('วิเคราะห์ทักษะ "ก่อนเข้าร่วมกิจกรรม" (Pre-test)', 'info', $reports['pre'] ?? [], $activity_id, 'pre'); ?>
+        <?php if($postRows): report_box('วิเคราะห์พัฒนาการ "หลังเข้าร่วมกิจกรรม" (Post-test)', 'success', $reports['post'] ?? [], $activity_id, 'post'); else: ?>
+            <div class="alert alert-warning border-warning border-2 text-center">
+                <p class="fw-bold mb-2">ท่านยังไม่ได้ทำแบบประเมินหลังเข้าร่วมกิจกรรม (Post-test)</p>
+                <a href="activities.php" class="btn btn-warning">ตรวจสอบสถานะเพื่อทำแบบประเมิน</a>
+            </div>
+        <?php endif; ?>
+
+        <div class="card shadow-sm border-primary">
+            <div class="card-header bg-primary text-white fw-bold">กิจกรรมที่แนะนำสำหรับคุณ</div>
+            <ul class="list-group list-group-flush">
+                <?php foreach ($recommended as $r): ?>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div><strong><?= htmlspecialchars($r['title']) ?></strong><br><small class="text-muted">พัฒนาทักษะ: <?= htmlspecialchars($r['matched_skills']) ?> | <?= $r['start_date'] ?> ถึง <?= $r['end_date'] ?></small></div>
+                        <a href="activities.php" class="btn btn-sm btn-outline-primary">ดูกิจกรรม</a>
+                    </li>
+                <?php endforeach; ?>
+                <?php if (empty($recommended)): ?><li class="list-group-item text-muted">ยังไม่มีกิจกรรมที่ตรงกับทักษะที่ควรพัฒนาในขณะนี้</li><?php endif; ?>
+            </ul>
         </div>
     </div>
 </div>
@@ -141,13 +166,13 @@ include '../includes/header.php';
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const ctx = document.getElementById('radarChart').getContext('2d');
-    const chart = new Chart(ctx, {
+    new Chart(ctx, {
         type: 'radar',
         data: {
             labels: <?= json_encode($labels) ?>,
             datasets: [
                 {
-                    label: 'คะแนนก่อนเข้าร่วม (Pre)',
+                    label: 'ก่อนเข้าร่วม (Pre)',
                     data: <?= json_encode($preData) ?>,
                     backgroundColor: 'rgba(54, 162, 235, 0.2)',
                     borderColor: 'rgba(54, 162, 235, 1)',
@@ -156,7 +181,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     fill: true
                 },
                 {
-                    label: 'คะแนนหลังเข้าร่วม (Post)',
+                    label: 'หลังเข้าร่วม (Post)',
                     data: <?= json_encode($postData) ?>,
                     backgroundColor: 'rgba(75, 192, 192, 0.2)',
                     borderColor: 'rgba(75, 192, 192, 1)',
@@ -168,23 +193,16 @@ document.addEventListener('DOMContentLoaded', function() {
         },
         options: {
             responsive: true,
-            scales: {
-                r: {
-                    angleLines: { display: true },
-                    suggestedMin: 0,
-                    suggestedMax: 10,
-                    ticks: { display:false }
-                }
-            },
-            plugins: {
-                legend: { position: 'bottom' }
-            }
+            scales: { r: { angleLines: { display: true }, suggestedMin: 0, suggestedMax: 100, ticks: { display: false } } },
+            plugins: { legend: { position: 'bottom' } }
         }
     });
 });
 </script>
 <?php elseif(empty($labels) && $activity_id): ?>
 <div class="alert alert-info py-5 text-center">ยังไม่มีข้อมูลการประเมินสำหรับกิจกรรมนี้</div>
+<?php elseif(!$activity_id): ?>
+<div class="alert alert-info py-5 text-center">ยังไม่มีข้อมูลการประเมิน กรุณาสมัครกิจกรรมและทำแบบประเมินก่อน</div>
 <?php endif; ?>
 
 <?php include '../includes/footer.php'; ?>

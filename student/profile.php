@@ -4,53 +4,63 @@ require_once '../includes/functions.php';
 check_login('student');
 $student_id = $_SESSION['user_id'];
 
-// Get user info
-$stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?");
-$stmt->execute([$student_id]);
-$user = $stmt->fetch();
+$baselineCheck = $pdo->prepare("SELECT 1 FROM student_assessments WHERE student_id = ? AND type = 'baseline' LIMIT 1");
+$baselineCheck->execute([$student_id]);
+if (!$baselineCheck->fetchColumn() && baseline_assessment_id($pdo) !== null) {
+    header('Location: assessment.php?type=baseline');
+    exit;
+}
+// If there is no active baseline assessment to take, fall through and render the
+// profile page as-is (it already handles the "no skill data yet" case below).
 
-$labels = [];
-$scoresData = [];
-
-// Get Baseline scores
-$baseScores = $pdo->prepare("SELECT s.skill_name, SUM(ar.score) as total FROM assessment_responses ar JOIN assessment_questions q ON ar.question_id = q.id JOIN soft_skills s ON q.skill_id = s.id WHERE ar.student_id = ? AND ar.type = 'baseline' GROUP BY s.id ORDER BY s.id");
-$baseScores->execute([$student_id]);
-foreach($baseScores->fetchAll() as $row) {
-    $labels[] = $row['skill_name'];
-    $scoresData[] = $row['total'];
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'regenerate') {
+    $rows = get_skill_scores($pdo, $student_id, null, 'baseline');
+    if ($rows) {
+        save_ai_report($pdo, $student_id, null, 'baseline', get_ai_analysis($rows, 'baseline', $_SESSION['name'], 'แบบประเมินสมาชิกใหม่'));
+    }
+    header("Location: profile.php?success=Regenerated"); exit;
 }
 
-// Get AI Report for baseline
-$aiSt = $pdo->prepare("SELECT analysis_text, recommendation_text FROM ai_reports WHERE student_id = ? AND type = 'baseline' LIMIT 1");
-$aiSt->execute([$student_id]);
-$report = $aiSt->fetch();
+$userStmt = $pdo->prepare("SELECT u.*, f.name AS faculty_name FROM students u LEFT JOIN faculties f ON u.faculty_id = f.id WHERE u.id = ?");
+$userStmt->execute([$student_id]);
+$user = $userStmt->fetch();
+
+$rows = get_skill_scores($pdo, $student_id, null, 'baseline');
+$labels = array_column($rows, 'skill_name');
+$scoresData = array_column($rows, 'pct');
+
+$weak = weak_skills($rows, 2);
+$recommended = recommend_activities($pdo, $student_id, $weak);
 
 include '../includes/header.php';
 ?>
-<div class="container py-4">
-    <div class="row mb-5 align-items-center">
-        <div class="col-md-8">
-            <h2 class="display-5 fw-bold text-primary"><i class="bi bi-person-circle"></i> โปรไฟล์ของฉัน</h2>
-            <p class="lead text-muted mt-2">ข้อมูลส่วนตัวและระดับ Soft Skill พื้นฐานของคุณ</p>
+<div class="py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+            <h2 class="display-6 fw-bold text-primary mb-1">โปรไฟล์ของฉัน</h2>
+            <p class="text-muted mb-0">ข้อมูลส่วนตัว ระดับทักษะพื้นฐาน และกิจกรรมที่แนะนำเพื่อพัฒนาทักษะที่ควรเสริม</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="activities.php" class="btn btn-outline-primary"><i class="bi bi-calendar-check"></i> ลงทะเบียนกิจกรรม</a>
+            <a href="analysis_report.php" class="btn btn-outline-info"><i class="bi bi-bar-chart-fill"></i> รายงานวิเคราะห์จาก AI</a>
         </div>
     </div>
+    <?php if (isset($_GET['success'])): ?><div class="alert alert-success">ดำเนินการเรียบร้อยแล้ว</div><?php endif; ?>
 
     <div class="row">
-        <!-- ข้อมูลส่วนตัว -->
         <div class="col-md-4 mb-4">
             <div class="card shadow-sm border-0 h-100">
-                <div class="card-header bg-primary text-white fw-bold py-3">
-                    <i class="bi bi-info-circle"></i> ข้อมูลนักศึกษา
-                </div>
+                <div class="card-header bg-primary text-white fw-bold py-3">ข้อมูลนักศึกษา</div>
                 <div class="card-body bg-light">
-                    <div class="text-center mb-4">
-                        <i class="bi bi-person-badge text-primary" style="font-size: 5rem;"></i>
-                        <h4 class="mt-2 fw-bold"><?= htmlspecialchars($user['name']) ?></h4>
+                    <div class="text-center mb-3">
+                        <h5 class="fw-bold mb-1"><?= htmlspecialchars($user['name']) ?></h5>
                         <span class="badge bg-secondary">นักศึกษา</span>
                     </div>
                     <ul class="list-group list-group-flush">
                         <li class="list-group-item bg-transparent"><strong>รหัสนักศึกษา:</strong> <?= htmlspecialchars($user['student_id'] ?: '-') ?></li>
+                        <li class="list-group-item bg-transparent"><strong>คณะ:</strong> <?= htmlspecialchars($user['faculty_name'] ?: '-') ?></li>
                         <li class="list-group-item bg-transparent"><strong>สาขาวิชา:</strong> <?= htmlspecialchars($user['department'] ?: '-') ?></li>
+                        <li class="list-group-item bg-transparent"><strong>ชั้นปี:</strong> <?= htmlspecialchars($user['year_level'] ?: '-') ?></li>
                         <li class="list-group-item bg-transparent"><strong>อีเมล:</strong> <?= htmlspecialchars($user['email'] ?: '-') ?></li>
                         <li class="list-group-item bg-transparent"><strong>ชื่อผู้ใช้งาน:</strong> <?= htmlspecialchars($user['username']) ?></li>
                     </ul>
@@ -58,84 +68,78 @@ include '../includes/header.php';
             </div>
         </div>
 
-        <!-- แผนภูมิ Soft Skill -->
         <div class="col-md-8 mb-4">
+            <?php if (!empty($labels)): ?>
             <div class="card shadow-sm border-0 h-100">
-                <div class="card-header bg-dark text-white fw-bold py-3">
-                    <i class="bi bi-graph-up"></i> ระดับทักษะพื้นฐาน (Baseline Soft Skills)
-                </div>
-                <div class="card-body d-flex flex-column">
-                    <?php if(!empty($labels)): ?>
-                        <div class="flex-grow-1 d-flex align-items-center justify-content-center" style="min-height: 300px;">
-                            <canvas id="baselineRadarChart" style="max-height: 350px;"></canvas>
-                        </div>
-                    <?php else: ?>
-                        <div class="alert alert-warning text-center my-auto">
-                            <i class="bi bi-exclamation-triangle-fill fs-1 text-warning mb-2"></i><br>
-                            ยังไม่มีข้อมูลการประเมินทักษะพื้นฐาน
-                        </div>
-                    <?php endif; ?>
+                <div class="card-header bg-dark text-white fw-bold py-3">ระดับทักษะพื้นฐาน</div>
+                <div class="card-body">
+                    <div class="mx-auto" style="max-width: 560px; height: 340px;">
+                        <canvas id="baselineRadarChart" aria-label="แผนภูมิใยแมงมุมแสดงระดับทักษะพื้นฐาน" role="img"></canvas>
+                    </div>
+                    <div class="text-center"><?= skill_level_legend_html() ?></div>
                 </div>
             </div>
+            <?php else: ?>
+            <div class="alert alert-warning h-100 d-flex align-items-center justify-content-center mb-0">ยังไม่มีข้อมูลคะแนนทักษะพื้นฐานที่แสดงผลได้</div>
+            <?php endif; ?>
         </div>
+    </div>
 
-        <!-- รายงาน AI -->
-        <?php if($report): ?>
-        <div class="col-12 mt-2">
-            <div class="card shadow-sm border-info">
-                <div class="card-header bg-info text-white fw-bold py-3">
-                    <i class="bi bi-robot"></i> วิเคราะห์ทักษะโดย AI (จากแบบประเมินเริ่มต้น)
-                </div>
-                <div class="card-body bg-light row">
-                    <div class="col-md-6 mb-3 mb-md-0">
-                        <h6 class="fw-bold text-dark"><i class="bi bi-search text-primary"></i> ผลการวิเคราะห์ (Analysis)</h6>
-                        <p class="text-secondary"><?= nl2br(htmlspecialchars($report['analysis_text'])) ?></p>
+    <div class="card shadow-sm border-primary">
+        <div class="card-header bg-primary text-white fw-bold py-3">กิจกรรมที่แนะนำสำหรับทักษะที่ควรพัฒนา</div>
+        <ul class="list-group list-group-flush">
+            <?php foreach ($recommended as $r): ?>
+                <li class="list-group-item d-flex justify-content-between align-items-center gap-3">
+                    <div>
+                        <strong><?= htmlspecialchars($r['title']) ?></strong><br>
+                        <small class="text-muted">ทักษะที่ช่วยพัฒนา: <?= htmlspecialchars($r['matched_skills']) ?> | <?= htmlspecialchars($r['start_date']) ?> ถึง <?= htmlspecialchars($r['end_date']) ?></small>
                     </div>
-                    <div class="col-md-6 border-start border-2 border-white">
-                        <h6 class="fw-bold text-dark"><i class="bi bi-lightbulb text-warning"></i> คำแนะนำเพื่อการพัฒนา (Recommendation)</h6>
-                        <p class="text-secondary"><?= nl2br(htmlspecialchars($report['recommendation_text'])) ?></p>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <?php endif; ?>
+                    <a href="activities.php" class="btn btn-sm btn-outline-primary flex-shrink-0">ดูกิจกรรม</a>
+                </li>
+            <?php endforeach; ?>
+            <?php if (empty($recommended)): ?>
+                <li class="list-group-item text-muted">
+                    <?= empty($weak) ? 'ไม่พบทักษะที่ต้องเร่งพัฒนา (คะแนนตั้งแต่ 80% ขึ้นไปทุกด้าน)' : 'ยังไม่มีกิจกรรมที่ตรงกับทักษะที่ควรพัฒนาในขณะนี้' ?>
+                </li>
+            <?php endif; ?>
+        </ul>
     </div>
 </div>
+
+<?php if (!empty($rows)): ?>
+<form method="POST" class="profile-analysis-float">
+    <?= csrf_field() ?>
+    <input type="hidden" name="action" value="regenerate">
+    <button type="submit" class="btn btn-primary btn-lg rounded-pill shadow" title="เริ่มการวิเคราะห์ AI ใหม่"
+        onclick="return confirm('เริ่มการวิเคราะห์ AI ใหม่หรือไม่? อาจใช้เวลาสักครู่');">
+        <i class="bi bi-arrow-clockwise"></i> วิเคราะห์ใหม่ด้วย AI
+    </button>
+</form>
+<?php endif; ?>
 
 <script>
 <?php if(!empty($labels)): ?>
 document.addEventListener('DOMContentLoaded', function() {
     const ctx = document.getElementById('baselineRadarChart').getContext('2d');
-    const chart = new Chart(ctx, {
+    new Chart(ctx, {
         type: 'radar',
         data: {
             labels: <?= json_encode($labels) ?>,
-            datasets: [
-                {
-                    label: 'คะแนนการประเมินพื้นฐาน',
-                    data: <?= json_encode($scoresData) ?>,
-                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                    borderColor: 'rgba(54, 162, 235, 1)',
-                    pointBackgroundColor: 'rgba(54, 162, 235, 1)',
-                    borderWidth: 2,
-                    fill: true
-                }
-            ]
+            datasets: [{
+                label: 'ระดับทักษะพื้นฐาน (%)',
+                data: <?= json_encode($scoresData) ?>,
+                backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                pointBackgroundColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 2,
+                fill: true
+            }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            scales: {
-                r: {
-                    angleLines: { display: true },
-                    suggestedMin: 0,
-                    suggestedMax: 10,
-                    ticks: { display:false }
-                }
-            },
-            plugins: {
-                legend: { position: 'bottom' }
-            }
+            scales: { r: { angleLines: { display: true }, suggestedMin: 0, suggestedMax: 100, ticks: { display: false } } },
+            plugins: { legend: { position: 'bottom' } }
         }
     });
 });

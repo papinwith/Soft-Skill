@@ -1,3 +1,6 @@
+-- Install order: soft.sql -> update_schema.sql -> update_schema_2.sql -> update_schema_3.sql -> php update_schema_4.php
+-- (schema_4 is a PHP script, not .sql, because it migrates data and repoints foreign keys -
+-- run it with `php update_schema_4.php` after the three .sql files above)
 CREATE DATABASE IF NOT EXISTS soft_skill_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE soft_skill_db;
 
@@ -13,6 +16,18 @@ CREATE TABLE IF NOT EXISTS `users` (
   `created_at` timestamp DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `password_reset_tokens` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `token_hash` char(64) NOT NULL,
+  `expires_at` datetime NOT NULL,
+  `created_at` timestamp DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `token_hash` (`token_hash`),
+  KEY `password_reset_user` (`user_id`),
+  FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS `soft_skills` (

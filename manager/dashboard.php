@@ -14,7 +14,7 @@ $participantCount->execute([$manager_id]);
 $participantCount = $participantCount->fetchColumn();
 
 // Count pre/post responses for my activities
-$responsesCount = $pdo->prepare("SELECT COUNT(DISTINCT ar.student_id, ar.activity_id) FROM assessment_responses ar JOIN activities a ON ar.activity_id = a.id WHERE a.manager_id = ?");
+$responsesCount = $pdo->prepare("SELECT COUNT(*) FROM student_assessments sa JOIN activities a ON sa.activity_id = a.id WHERE a.manager_id = ?");
 $responsesCount->execute([$manager_id]);
 $responsesCount = $responsesCount->fetchColumn();
 ?>

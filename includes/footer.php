@@ -6,6 +6,6 @@
 </footer>
 <!-- Bootstrap 5 Bundle JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="/soft skill/assets/js/main.js"></script>
+<script src="/Soft-Skill/assets/js/main.js"></script>
 </body>
 </html>

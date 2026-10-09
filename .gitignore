@@ -23,6 +23,13 @@ php_errors.log
 # uploads/
 # assets/uploads/
 
+### Composer ###
+/vendor/
+
+### Local secrets ###
+config/mail.local.php
+config/db.local.php
+
 ### Project Configs ###
 # ปกติมักจะ ignore ไฟล์ที่เก็บ Password Database โดยเฉพาะ หากจะ publish เป็น public
 # config/db_connect.php

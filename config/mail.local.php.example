@@ -1,0 +1,14 @@
+<?php
+// Copy this file to mail.local.php (same folder) and fill in your real values.
+// mail.local.php is in .gitignore and is NEVER committed, so this is the safest
+// place to put a real password on Windows/XAMPP — setx-style environment variables
+// often don't reach Apache because the XAMPP Control Panel keeps its own environment
+// and has to be fully restarted (sometimes a reboot) before it would see them.
+//
+// Gmail: enable 2-Step Verification, then create an App Password at
+// https://myaccount.google.com/apppasswords and paste it below (16 characters,
+// remove any spaces). Do NOT use your normal Gmail login password here.
+return [
+    'username' => 'youraccount@gmail.com',
+    'password' => 'abcdabcdabcdabcd',
+];

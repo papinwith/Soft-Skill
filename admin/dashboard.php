@@ -4,7 +4,7 @@ check_login('admin');
 include '../includes/header.php';
 
 // Summary queries
-$userCount = $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();
+$userCount = $pdo->query("SELECT (SELECT COUNT(*) FROM students) + (SELECT COUNT(*) FROM activity_supervisors) + (SELECT COUNT(*) FROM admins)")->fetchColumn();
 $activityCount = $pdo->query("SELECT COUNT(*) FROM activities")->fetchColumn();
 $skillCount = $pdo->query("SELECT COUNT(*) FROM soft_skills")->fetchColumn();
 $assessmentCount = $pdo->query("SELECT COUNT(*) FROM assessments")->fetchColumn();
@@ -53,6 +53,8 @@ $assessmentCount = $pdo->query("SELECT COUNT(*) FROM assessments")->fetchColumn(
                     <a href="manage_users.php?role=manager" class="list-group-item list-group-item-action">จัดการผู้ดูแลกิจกรรม (Activity Managers)</a>
                     <a href="manage_users.php?role=student" class="list-group-item list-group-item-action">จัดการนักศึกษา (Students)</a>
                     <a href="manage_activities.php" class="list-group-item list-group-item-action">จัดการกิจกรรม (Activities)</a>
+                    <a href="manage_departments.php" class="list-group-item list-group-item-action">จัดการคณะและสาขา (Faculties/Majors)</a>
+                    <a href="manage_curricula.php" class="list-group-item list-group-item-action">จัดการหลักสูตร (Curricula)</a>
                     <a href="manage_skills.php" class="list-group-item list-group-item-action">จัดการ Soft Skills</a>
                     <a href="manage_assessments.php" class="list-group-item list-group-item-action">จัดการข้อมูลแบบประเมินและคำถาม</a>
                     <a href="reports.php" class="list-group-item list-group-item-action list-group-item-primary">ออกรายงานสรุปผลต่างๆ</a>

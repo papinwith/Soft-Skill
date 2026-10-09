@@ -7,7 +7,7 @@
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Custom CSS -->
-    <link href="/soft skill/assets/css/style.css" rel="stylesheet">
+    <link href="/Soft-Skill/assets/css/style.css" rel="stylesheet">
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -19,7 +19,7 @@
 <body>
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
   <div class="container">
-    <a class="navbar-brand" href="/soft skill/index.php">Soft Skill System</a>
+    <a class="navbar-brand" href="/Soft-Skill/index.php">Soft Skill System</a>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
       <span class="navbar-toggler-icon"></span>
     </button>
@@ -31,23 +31,25 @@
             </li>
             
             <?php if($_SESSION['role'] === 'admin'): ?>
-                <li class="nav-item"><a class="nav-link" href="/soft skill/admin/dashboard.php">ระบบจัดการ</a></li>
+                <li class="nav-item"><a class="nav-link" href="/Soft-Skill/admin/dashboard.php">ระบบจัดการ</a></li>
             <?php elseif($_SESSION['role'] === 'manager'): ?>
-                <li class="nav-item"><a class="nav-link" href="/soft skill/manager/dashboard.php">จัดการกิจกรรม</a></li>
+                <li class="nav-item"><a class="nav-link" href="/Soft-Skill/manager/dashboard.php">จัดการกิจกรรม</a></li>
             <?php elseif($_SESSION['role'] === 'student'): ?>
-                <li class="nav-item"><a class="nav-link" href="/soft skill/student/activities.php">ลงทะเบียนกิจกรรม</a></li>
-                <li class="nav-item"><a class="nav-link" href="/soft skill/student/profile.php">โปรไฟล์ของฉัน</a></li>
+                <li class="nav-item"><a class="nav-link" href="/Soft-Skill/student/activities.php">ลงทะเบียนกิจกรรม</a></li>
             <?php endif; ?>
 
             <li class="nav-item ms-3">
-              <a class="btn btn-danger btn-sm mt-1" href="/soft skill/logout.php">ออกจากระบบ</a>
+              <form method="post" action="/Soft-Skill/logout.php" class="mt-1">
+                <?php echo csrf_field(); ?>
+                <button type="button" class="btn btn-danger btn-sm" onclick="this.form.submit()">ออกจากระบบ</button>
+              </form>
             </li>
         <?php else: ?>
             <li class="nav-item">
-              <a class="nav-link" href="/soft skill/index.php">เข้าสู่ระบบ</a>
+              <a class="nav-link" href="/Soft-Skill/index.php">เข้าสู่ระบบ</a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" href="/soft skill/register.php">สมัครสมาชิก</a>
+              <a class="nav-link" href="/Soft-Skill/register.php">สมัครสมาชิก</a>
             </li>
         <?php endif; ?>
       </ul>

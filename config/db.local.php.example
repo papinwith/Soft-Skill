@@ -1,0 +1,10 @@
+<?php
+// Copy this file to db.local.php (gitignored) and fill in real values if your DB
+// needs credentials other than the XAMPP default (root / no password). Only keys
+// you set here override config/db.php's defaults.
+return [
+    'host' => '127.0.0.1',
+    'db'   => 'soft_skill_db',
+    'user' => 'root',
+    'pass' => '',
+];
