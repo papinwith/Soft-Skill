@@ -9,12 +9,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $activity_id = (int)($_POST['activity_id'] ?? 0);
         // Lock the activity row so concurrent applications cannot exceed the capacity
         $pdo->beginTransaction();
-        $act = $pdo->prepare("SELECT status, capacity, end_date FROM activities WHERE id = ? FOR UPDATE");
+        $act = $pdo->prepare("SELECT status, capacity, end_date, registration_close_at FROM activities WHERE id = ? FOR UPDATE");
         $act->execute([$activity_id]);
         $activity = $act->fetch();
         $error = null;
         if (!$activity) $error = 'ไม่พบกิจกรรม';
         elseif ($activity['status'] !== 'open' || $activity['end_date'] < date('Y-m-d')) $error = 'กิจกรรมนี้ปิดรับสมัครแล้ว';
+        elseif ($activity['registration_close_at'] !== null && $activity['registration_close_at'] < date('Y-m-d H:i:s')) $error = 'ปิดรับสมัครแล้ว (เลยกำหนดเวลา)';
         elseif ($activity['capacity'] > 0) {
             $cnt = $pdo->prepare("SELECT COUNT(*) FROM activity_participants WHERE activity_id = ? AND status <> 'rejected'");
             $cnt->execute([$activity_id]);
@@ -65,7 +66,8 @@ include '../includes/header.php';
         $done_pre = isset($submitted_assessments[$aid]['pre']);
         $done_post = isset($submitted_assessments[$aid]['post']);
         $is_full = $a['capacity'] > 0 && $a['joined'] >= $a['capacity'];
-        $is_open = $a['status'] === 'open' && $a['end_date'] >= date('Y-m-d');
+        $reg_closed = $a['registration_close_at'] !== null && $a['registration_close_at'] < date('Y-m-d H:i:s');
+        $is_open = $a['status'] === 'open' && $a['end_date'] >= date('Y-m-d') && !$reg_closed;
     ?>
     <div class="col-md-6 mb-4">
         <div class="card shadow-sm h-100 border-0">
@@ -76,6 +78,12 @@ include '../includes/header.php';
                 <?php if($a['location']): ?><p class="mb-2"><strong>สถานที่:</strong> <?= htmlspecialchars($a['location']) ?></p><?php endif; ?>
                 <p class="mb-2"><strong>ผู้จัดกิจกรรม:</strong> <?= htmlspecialchars($a['manager_name']) ?></p>
                 <p class="mb-0"><strong>ผู้สมัคร:</strong> <?= $a['joined'] ?><?= $a['capacity'] > 0 ? ' / ' . $a['capacity'] : ' (ไม่จำกัดจำนวน)' ?></p>
+                <?php if ($a['registration_close_at'] && !$status): ?>
+                    <p class="mb-0 mt-2">
+                        <strong>ปิดรับสมัคร:</strong> <?= htmlspecialchars($a['registration_close_at']) ?>
+                        <span class="badge bg-warning text-dark countdown-badge" data-close-at="<?= htmlspecialchars(str_replace(' ', 'T', $a['registration_close_at']) . '+07:00') ?>"></span>
+                    </p>
+                <?php endif; ?>
             </div>
             <div class="card-footer bg-white text-center py-3">
                 <?php if($status): ?>
@@ -107,6 +115,8 @@ include '../includes/header.php';
                     <?php endif; ?>
                 <?php elseif($is_full): ?>
                     <span class="badge bg-danger p-2 fs-6">ผู้สมัครเต็มจำนวนแล้ว</span>
+                <?php elseif($reg_closed): ?>
+                    <span class="badge bg-secondary p-2 fs-6">ปิดรับสมัครแล้ว (เลยกำหนดเวลา)</span>
                 <?php elseif(!$is_open): ?>
                     <span class="badge bg-secondary p-2 fs-6">ปิดรับสมัคร</span>
                 <?php else: ?>
@@ -124,4 +134,21 @@ include '../includes/header.php';
     <?php if(empty($activities)): ?><div class="col-12"><div class="alert alert-info border-info text-center py-5">ยังไม่มีกิจกรรมในขณะนี้</div></div><?php endif; ?>
 </div>
 
+<script>
+(function () {
+    function tick() {
+        document.querySelectorAll('.countdown-badge').forEach(function (el) {
+            var diff = new Date(el.dataset.closeAt).getTime() - Date.now();
+            if (diff <= 0) { el.textContent = 'ปิดรับสมัครแล้ว'; return; }
+            var d = Math.floor(diff / 86400000);
+            var h = Math.floor(diff % 86400000 / 3600000);
+            var m = Math.floor(diff % 3600000 / 60000);
+            var s = Math.floor(diff % 60000 / 1000);
+            el.textContent = 'เหลือเวลา ' + (d > 0 ? d + 'วัน ' : '') + h + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+        });
+    }
+    tick();
+    setInterval(tick, 1000);
+})();
+</script>
 <?php include '../includes/footer.php'; ?>

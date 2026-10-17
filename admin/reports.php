@@ -3,6 +3,7 @@ require_once '../config/db.php';
 check_login('admin');
 include '../includes/header.php';
 ?>
+<div class="mb-3"><a href="dashboard.php" class="btn btn-sm btn-secondary">&larr; ย้อนกลับ</a></div>
 <div class="d-flex justify-content-between mb-3">
     <h3>รายงานผลระบบ (Admin Reports)</h3>
 </div>

@@ -29,6 +29,7 @@ function assessment_fields() { ?>
     <div class="mb-3"><label class="form-label">ชื่อแบบประเมิน</label><input type="text" name="title" class="form-control" required></div>
     <div class="mb-3"><label class="form-label">รายละเอียด</label><textarea name="description" class="form-control" rows="3"></textarea></div>
 <?php } ?>
+<div class="mb-3"><a href="dashboard.php" class="btn btn-sm btn-secondary">&larr; ย้อนกลับ</a></div>
 <div class="d-flex justify-content-between mb-3">
     <h3>จัดการแบบประเมิน</h3>
     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addModal">เพิ่มแบบประเมิน</button>

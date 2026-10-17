@@ -1,4 +1,4 @@
--- Install order: soft.sql -> update_schema.sql -> update_schema_2.sql -> update_schema_3.sql -> php update_schema_4.php
+-- Install order: soft.sql -> update_schema.sql -> update_schema_2.sql -> update_schema_3.sql -> php update_schema_4.php -> update_schema_5.sql
 -- (schema_4 is a PHP script, not .sql, because it migrates data and repoints foreign keys -
 -- run it with `php update_schema_4.php` after the three .sql files above)
 CREATE DATABASE IF NOT EXISTS soft_skill_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;

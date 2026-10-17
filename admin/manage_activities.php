@@ -43,6 +43,7 @@ function manager_select($managers) { ?>
         </select>
     </div>
 <?php } ?>
+<div class="mb-3"><a href="dashboard.php" class="btn btn-sm btn-secondary">&larr; ย้อนกลับ</a></div>
 <div class="d-flex justify-content-between mb-3">
     <h3>จัดการกิจกรรม</h3>
     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addModal">เพิ่มกิจกรรม</button>
@@ -60,7 +61,9 @@ function manager_select($managers) { ?>
             <tbody>
                 <?php foreach ($activities as $a):
                     $fill = ['id' => $a['id'], 'title' => $a['title'], 'description' => $a['description'], 'manager_id' => $a['manager_id'],
-                        'start_date' => $a['start_date'], 'end_date' => $a['end_date'], 'location' => $a['location'], 'capacity' => $a['capacity'],
+                        'start_date' => $a['start_date'], 'end_date' => $a['end_date'],
+                        'registration_close_at' => datetime_local_value($a['registration_close_at']),
+                        'location' => $a['location'], 'capacity' => $a['capacity'],
                         'status' => $a['status'], 'assessment_id' => $a['assessment_id'], 'skills' => $skillMap[$a['id']] ?? []]; ?>
                 <tr>
                     <td><?= $a['id'] ?></td>

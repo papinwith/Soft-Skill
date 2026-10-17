@@ -72,10 +72,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $confirmValue = $_POST['password_confirm'] ?? '';
         $password = is_string($passwordValue) ? $passwordValue : '';
         $confirm = is_string($confirmValue) ? $confirmValue : '';
+        $pwError = password_strength_error($password);
         if (!$tokenRecord) {
             $error = 'ลิงก์ตั้งรหัสผ่านไม่ถูกต้องหรือหมดอายุแล้ว กรุณาขอลิงก์ใหม่';
-        } elseif ($error = password_strength_error($password)) {
-            // $error already set
+        } elseif ($pwError !== null) {
+            $error = $pwError;
         } elseif ($password !== $confirm) {
             $error = 'รหัสผ่านและยืนยันรหัสผ่านไม่ตรงกัน';
         } else {

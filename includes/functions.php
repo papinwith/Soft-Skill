@@ -74,18 +74,30 @@ function get_skill_scores_bulk($pdo, $student_ids, $activity_id, $type) {
 const ACCOUNT_TABLES = [['students', 'student'], ['activity_supervisors', 'manager'], ['admins', 'admin']];
 
 // Looks up a login by username across all three account tables. Returns [$row, $role] or [null, null].
-function find_account($pdo, $username) {
+function find_account($pdo, $identifier) {
     foreach (ACCOUNT_TABLES as [$table, $role]) {
-        $q = $pdo->prepare("SELECT * FROM `$table` WHERE username = ?");
-        $q->execute([$username]);
+        $hasEmail = $table !== 'admins';
+        $sql = "SELECT * FROM `$table` WHERE username = ?" . ($hasEmail ? " OR email = ?" : "") . " LIMIT 1";
+        $q = $pdo->prepare($sql);
+        $q->execute($hasEmail ? [$identifier, $identifier] : [$identifier]);
         if ($row = $q->fetch()) return [$row, $role];
     }
     return [null, null];
 }
 
-// Returns an error message when the username / student ID would collide with another account.
-// $exclude is [table, id] of the account being edited (so it doesn't conflict with itself), or null when adding.
-function identifier_conflict($pdo, $username, $student_id, $exclude = null) {
+// Returns an error message when the username / student ID / email would collide with another
+// account. $exclude is [table, id] of the account being edited (so it doesn't conflict with
+// itself), or null when adding.
+function identifier_conflict($pdo, $username, $student_id, $exclude = null, $email = null) {
+    if ($email !== null && $email !== '') {
+        foreach (ACCOUNT_TABLES as [$table, ]) {
+            if ($table === 'admins') continue; // no email column
+            $sql = "SELECT 1 FROM `$table` WHERE email = ?" . ($exclude && $exclude[0] === $table ? " AND id <> ?" : "") . " LIMIT 1";
+            $q = $pdo->prepare($sql);
+            $q->execute($exclude && $exclude[0] === $table ? [$email, $exclude[1]] : [$email]);
+            if ($q->fetch()) return 'อีเมลนี้ถูกใช้ไปแล้ว';
+        }
+    }
     foreach (ACCOUNT_TABLES as [$table, ]) {
         $sql = "SELECT 1 FROM `$table` WHERE username = ?" . ($exclude && $exclude[0] === $table ? " AND id <> ?" : "") . " LIMIT 1";
         $q = $pdo->prepare($sql);

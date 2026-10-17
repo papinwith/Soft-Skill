@@ -60,7 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $department_name = $dept->fetchColumn();
         if ($department_name === false) $fail("กรุณาเลือกคณะและสาขาให้ถูกต้อง");
 
-        $conflict = identifier_conflict($pdo, $username, $student_id);
+        $conflict = identifier_conflict($pdo, $username, $student_id, null, $email);
         if ($conflict) $fail($conflict);
 
         $hashed_password = password_hash($password, PASSWORD_DEFAULT);

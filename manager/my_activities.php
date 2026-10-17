@@ -50,7 +50,9 @@ include '../includes/header.php';
             <tbody>
                 <?php foreach ($activities as $a):
                     $fill = ['id' => $a['id'], 'title' => $a['title'], 'description' => $a['description'], 'start_date' => $a['start_date'],
-                        'end_date' => $a['end_date'], 'location' => $a['location'], 'capacity' => $a['capacity'], 'status' => $a['status'],
+                        'end_date' => $a['end_date'],
+                        'registration_close_at' => datetime_local_value($a['registration_close_at']),
+                        'location' => $a['location'], 'capacity' => $a['capacity'], 'status' => $a['status'],
                         'assessment_id' => $a['assessment_id'], 'skills' => $skillMap[$a['id']] ?? []]; ?>
                 <tr>
                     <td><?= $a['id'] ?></td>

@@ -25,8 +25,8 @@ include 'includes/header.php';
                     <?= csrf_field() ?>
                     <input type="hidden" name="action" value="login">
                     <div class="mb-3">
-                        <label class="form-label fw-bold">ชื่อผู้ใช้งาน (Username) หรือ รหัสนักศึกษา</label>
-                        <input type="text" name="username" class="form-control" required placeholder="admin / รหัสนักศึกษา">
+                        <label class="form-label fw-bold">ชื่อผู้ใช้งาน, อีเมล หรือ รหัสนักศึกษา</label>
+                        <input type="text" name="username" class="form-control" required placeholder="admin / อีเมล / รหัสนักศึกษา">
                     </div>
                     <div class="mb-4">
                         <label class="form-label fw-bold">รหัสผ่าน (Password)</label>

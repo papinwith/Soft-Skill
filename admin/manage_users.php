@@ -34,7 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         elseif ($student_id !== null && strlen($student_id) > 10) $error = 'รหัสนักศึกษาต้องมีความยาวไม่เกิน 10 ตัวอักษร';
         elseif ($year_level !== null && ($year_level < 1 || $year_level > 4)) $error = 'ชั้นปีต้องอยู่ระหว่าง 1-4';
 
-        if (!$error) $error = identifier_conflict($pdo, $username, $student_id, $action === 'edit' ? [$table, $id] : null);
+        if (!$error) $error = identifier_conflict($pdo, $username, $student_id, $action === 'edit' ? [$table, $id] : null, $email);
         if (!$error && $role === 'student') {
             [$faculty_id, $department_id, $department_text, $error] = resolve_faculty_department($pdo, nullable_id($_POST['faculty_id'] ?? ''), nullable_id($_POST['department_id'] ?? ''));
             if (!$error && $action === 'edit' && $department_id === null) {
@@ -108,6 +108,7 @@ function user_form_fields($role, $faculties, $departments, $isEdit) { ?>
     <?php endif;
 }
 ?>
+<div class="mb-3"><a href="dashboard.php" class="btn btn-sm btn-secondary">&larr; ย้อนกลับ</a></div>
 <div class="d-flex justify-content-between mb-3">
     <h3>จัดการ<?= $role_title ?></h3>
     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addModal">เพิ่ม<?= $role_title ?></button>

@@ -50,7 +50,15 @@ function curriculum_fields($departments) { ?>
     <div class="row">
         <div class="col-md-6 mb-3"><label class="form-label">ชั้นปี</label>
             <select name="year_level" class="form-select"><option value="">-</option><?php for ($y = 1; $y <= 4; $y++): ?><option value="<?= $y ?>"><?= $y ?></option><?php endfor; ?></select></div>
-        <div class="col-md-6 mb-3"><label class="form-label">ระดับการศึกษา</label><input type="text" name="education_level" class="form-control" placeholder="เช่น ปริญญาตรี"></div>
+        <div class="col-md-6 mb-3"><label class="form-label">ระดับการศึกษา</label>
+            <select name="education_level" class="form-select">
+                <option value="">-- เลือกระดับการศึกษา --</option>
+                <option value="ประกาศนียบัตรวิชาชีพ (ปวช.)">ประกาศนียบัตรวิชาชีพ (ปวช.)</option>
+                <option value="ประกาศนียบัตรวิชาชีพชั้นสูง (ปวส.)">ประกาศนียบัตรวิชาชีพชั้นสูง (ปวส.)</option>
+                <option value="ปริญญาตรี">ปริญญาตรี</option>
+                <option value="ปริญญาโท">ปริญญาโท</option>
+                <option value="ปริญญาเอก">ปริญญาเอก</option>
+            </select></div>
     </div>
 <?php } ?>
 <div class="mb-3"><a href="dashboard.php" class="btn btn-sm btn-secondary">&larr; ย้อนกลับ</a></div>

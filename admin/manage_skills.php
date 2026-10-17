@@ -27,6 +27,7 @@ function skill_fields() { ?>
     <div class="mb-3"><label class="form-label">ชื่อทักษะ</label><input type="text" name="skill_name" class="form-control" required></div>
     <div class="mb-3"><label class="form-label">คำอธิบาย</label><textarea name="description" class="form-control" rows="3"></textarea></div>
 <?php } ?>
+<div class="mb-3"><a href="dashboard.php" class="btn btn-sm btn-secondary">&larr; ย้อนกลับ</a></div>
 <div class="d-flex justify-content-between mb-3">
     <h3>จัดการ Soft Skills</h3>
     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addModal">เพิ่ม Soft Skill</button>

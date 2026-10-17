@@ -1,4 +1,8 @@
 <?php
+// Match MySQL's server clock (Thailand local time) so PHP-side date()/time() comparisons
+// against DB timestamps or admin-entered local times (e.g. registration_close_at) line up.
+date_default_timezone_set('Asia/Bangkok');
+
 $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
     || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
 session_set_cookie_params([
