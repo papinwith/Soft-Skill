@@ -1,5 +1,6 @@
 <?php
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 check_login('admin');
 
 $assessment_id = (int)($_GET['id'] ?? 0);
@@ -11,25 +12,35 @@ if (!$assessment) {
     die("Assessment not found");
 }
 
+$fieldErrors = [];
+$reopenData = [];
+$reopenModal = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     $question = trim($_POST['question_text'] ?? '');
     $skill_id = (int)($_POST['skill_id'] ?? 0);
     $sort = (int)($_POST['sort_order'] ?? 0);
     $active = isset($_POST['is_active']) && $_POST['is_active'] === '0' ? 0 : 1;
-    if ($action === 'add' && $question !== '' && $skill_id) {
-        $pdo->prepare("INSERT INTO assessment_questions (assessment_id, skill_id, question_text, sort_order, is_active) VALUES (?, ?, ?, ?, ?)")
-            ->execute([$assessment_id, $skill_id, $question, $sort, $active]);
-        header("Location: assessment_questions.php?id=$assessment_id&success=Added"); exit;
-    } elseif ($action === 'edit' && $question !== '' && $skill_id) {
-        $pdo->prepare("UPDATE assessment_questions SET skill_id = ?, question_text = ?, sort_order = ?, is_active = ? WHERE id = ? AND assessment_id = ?")
-            ->execute([$skill_id, $question, $sort, $active, (int)($_POST['id'] ?? 0), $assessment_id]);
-        header("Location: assessment_questions.php?id=$assessment_id&success=Updated"); exit;
+    if ($action === 'add' || $action === 'edit') {
+        if ($question === '') $fieldErrors['question_text'] = 'กรุณากรอกคำถาม';
+        if (!$skill_id) $fieldErrors['skill_id'] = 'กรุณาเลือกทักษะ';
+        if (empty($fieldErrors)) {
+            if ($action === 'add') {
+                $pdo->prepare("INSERT INTO assessment_questions (assessment_id, skill_id, question_text, sort_order, is_active) VALUES (?, ?, ?, ?, ?)")
+                    ->execute([$assessment_id, $skill_id, $question, $sort, $active]);
+                header("Location: assessment_questions.php?id=$assessment_id&success=Added"); exit;
+            } else {
+                $pdo->prepare("UPDATE assessment_questions SET skill_id = ?, question_text = ?, sort_order = ?, is_active = ? WHERE id = ? AND assessment_id = ?")
+                    ->execute([$skill_id, $question, $sort, $active, (int)($_POST['id'] ?? 0), $assessment_id]);
+                header("Location: assessment_questions.php?id=$assessment_id&success=Updated"); exit;
+            }
+        }
+        $reopenModal = $action === 'add' ? 'addModal' : 'editModal';
+        $reopenData = $_POST;
     } elseif ($action === 'delete') {
         $pdo->prepare("DELETE FROM assessment_questions WHERE id = ? AND assessment_id = ?")->execute([(int)($_POST['id'] ?? 0), $assessment_id]);
         header("Location: assessment_questions.php?id=$assessment_id&success=Deleted"); exit;
     }
-    header("Location: assessment_questions.php?id=$assessment_id&error=" . urlencode('กรุณากรอกข้อมูลให้ครบ')); exit;
 }
 
 $questions = $pdo->prepare("SELECT q.*, s.skill_name FROM assessment_questions q JOIN soft_skills s ON q.skill_id = s.id WHERE q.assessment_id = ? ORDER BY s.id, q.sort_order, q.id");
@@ -126,4 +137,5 @@ function question_fields($skills) { ?>
     </form>
   </div>
 </div>
+<?= $reopenModal ? reopen_modal_script($reopenModal, $reopenData, $fieldErrors) : '' ?>
 <?php include '../includes/footer.php'; ?>

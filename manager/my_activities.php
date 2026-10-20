@@ -1,23 +1,30 @@
 <?php
 require_once '../config/db.php';
 require_once '../includes/activity_helpers.php';
+require_once '../includes/functions.php';
 check_login('manager');
 $manager_id = $_SESSION['user_id'];
 
+$fieldErrors = [];
+$reopenData = [];
+$reopenModal = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     if ($action === 'add' || $action === 'edit') {
-        [$data, $error] = parse_activity_post();
-        if ($error) { header("Location: my_activities.php?error=" . urlencode($error)); exit; }
-        if ($action === 'add') {
-            save_activity($pdo, $data, $manager_id);
-        } else {
-            $id = (int)($_POST['id'] ?? 0);
-            $own = $pdo->prepare("SELECT id FROM activities WHERE id = ? AND manager_id = ?");
-            $own->execute([$id, $manager_id]);
-            if ($own->fetch()) save_activity($pdo, $data, $manager_id, $id);
+        [$data, $fieldErrors] = parse_activity_post();
+        if (empty($fieldErrors)) {
+            if ($action === 'add') {
+                save_activity($pdo, $data, $manager_id);
+            } else {
+                $id = (int)($_POST['id'] ?? 0);
+                $own = $pdo->prepare("SELECT id FROM activities WHERE id = ? AND manager_id = ?");
+                $own->execute([$id, $manager_id]);
+                if ($own->fetch()) save_activity($pdo, $data, $manager_id, $id);
+            }
+            header("Location: my_activities.php?success=Saved"); exit;
         }
-        header("Location: my_activities.php?success=Saved"); exit;
+        $reopenModal = $action === 'add' ? 'addModal' : 'editModal';
+        $reopenData = $_POST;
     } elseif ($action === 'delete') {
         $pdo->prepare("DELETE FROM activities WHERE id = ? AND manager_id = ?")->execute([(int)($_POST['id'] ?? 0), $manager_id]);
         header("Location: my_activities.php?success=Deleted"); exit;
@@ -110,4 +117,5 @@ include '../includes/header.php';
     </form>
   </div>
 </div>
+<?= $reopenModal ? reopen_modal_script($reopenModal, $reopenData, $fieldErrors) : '' ?>
 <?php include '../includes/footer.php'; ?>

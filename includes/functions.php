@@ -12,6 +12,15 @@ function password_strength_error($password) {
     return null;
 }
 
+// After a failed add/edit submit, re-opens the given modal pre-filled with what the user
+// typed ($data, usually $_POST) and highlights the specific field(s) in $fieldErrors
+// (['field_name' => 'message']) instead of losing the form and showing one generic banner.
+function reopen_modal_script($modalId, $data, $fieldErrors) {
+    if (empty($fieldErrors)) return '';
+    return '<script>document.addEventListener("DOMContentLoaded", function () { reopenModalWithErrors('
+        . json_encode($modalId) . ', ' . json_encode($data) . ', ' . json_encode($fieldErrors) . '); });</script>';
+}
+
 // Shown next to any skill-level badge so the 80/60/40% cutoffs are never a mystery
 function skill_level_legend_html() {
     return '<p class="small text-muted mb-0">

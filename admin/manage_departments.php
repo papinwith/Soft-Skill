@@ -1,34 +1,50 @@
 <?php
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 check_login('admin');
 
+const DEPT_ACTION_MODAL = ['add_faculty' => 'addFaculty', 'edit_faculty' => 'editFaculty', 'add_department' => 'addDepartment', 'edit_department' => 'editDepartment'];
+
+$fieldErrors = [];
+$reopenData = [];
+$reopenModal = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     $name = trim($_POST['name'] ?? '');
     $id = (int)($_POST['id'] ?? 0);
     $faculty_id = (int)($_POST['faculty_id'] ?? 0);
-    $error = null;
-    try {
-        if ($action === 'add_faculty' && $name !== '') {
-            $pdo->prepare("INSERT INTO faculties (name) VALUES (?)")->execute([$name]);
-        } elseif ($action === 'edit_faculty' && $name !== '') {
-            $pdo->prepare("UPDATE faculties SET name = ? WHERE id = ?")->execute([$name, $id]);
-        } elseif ($action === 'delete_faculty') {
-            $pdo->prepare("DELETE FROM faculties WHERE id = ?")->execute([$id]);
-        } elseif ($action === 'add_department' && $name !== '' && $faculty_id) {
-            $pdo->prepare("INSERT INTO departments (faculty_id, name) VALUES (?, ?)")->execute([$faculty_id, $name]);
-        } elseif ($action === 'edit_department' && $name !== '' && $faculty_id) {
-            $pdo->prepare("UPDATE departments SET faculty_id = ?, name = ? WHERE id = ?")->execute([$faculty_id, $name, $id]);
-            $pdo->prepare("UPDATE students SET department = ?, faculty_id = ? WHERE department_id = ?")->execute([$name, $faculty_id, $id]);
-        } elseif ($action === 'delete_department') {
-            $pdo->prepare("DELETE FROM departments WHERE id = ?")->execute([$id]);
-        } else {
-            $error = 'กรุณากรอกข้อมูลให้ครบ';
+    $needsFaculty = in_array($action, ['add_department', 'edit_department'], true);
+
+    if (isset(DEPT_ACTION_MODAL[$action])) {
+        if ($name === '') $fieldErrors['name'] = 'กรุณากรอกชื่อ';
+        if ($needsFaculty && !$faculty_id) $fieldErrors['faculty_id'] = 'กรุณาเลือกคณะ';
+
+        if (empty($fieldErrors)) {
+            try {
+                if ($action === 'add_faculty') {
+                    $pdo->prepare("INSERT INTO faculties (name) VALUES (?)")->execute([$name]);
+                } elseif ($action === 'edit_faculty') {
+                    $pdo->prepare("UPDATE faculties SET name = ? WHERE id = ?")->execute([$name, $id]);
+                } elseif ($action === 'add_department') {
+                    $pdo->prepare("INSERT INTO departments (faculty_id, name) VALUES (?, ?)")->execute([$faculty_id, $name]);
+                } elseif ($action === 'edit_department') {
+                    $pdo->prepare("UPDATE departments SET faculty_id = ?, name = ? WHERE id = ?")->execute([$faculty_id, $name, $id]);
+                    $pdo->prepare("UPDATE students SET department = ?, faculty_id = ? WHERE department_id = ?")->execute([$name, $faculty_id, $id]);
+                }
+                header('Location: manage_departments.php?success=Saved'); exit;
+            } catch (PDOException $e) {
+                $fieldErrors['name'] = ($e->errorInfo[1] ?? 0) == 1062 ? 'ข้อมูลนี้มีอยู่แล้ว' : 'ไม่สามารถบันทึกข้อมูลได้';
+            }
         }
-    } catch (PDOException $e) {
-        $error = ($e->errorInfo[1] ?? 0) == 1062 ? 'ข้อมูลนี้มีอยู่แล้ว' : 'ไม่สามารถบันทึกข้อมูลได้';
+        $reopenModal = DEPT_ACTION_MODAL[$action];
+        $reopenData = $_POST;
+    } elseif ($action === 'delete_faculty') {
+        $pdo->prepare("DELETE FROM faculties WHERE id = ?")->execute([$id]);
+        header('Location: manage_departments.php?success=Saved'); exit;
+    } elseif ($action === 'delete_department') {
+        $pdo->prepare("DELETE FROM departments WHERE id = ?")->execute([$id]);
+        header('Location: manage_departments.php?success=Saved'); exit;
     }
-    header('Location: manage_departments.php?' . ($error ? 'error=' . urlencode($error) : 'success=Saved')); exit;
 }
 
 $faculties = $pdo->query("SELECT * FROM faculties ORDER BY name")->fetchAll();
@@ -120,4 +136,5 @@ function facultySelect($faculties) { ?>
   </div>
 </div>
 <?php endforeach; ?>
+<?= $reopenModal ? reopen_modal_script($reopenModal, $reopenData, $fieldErrors) : '' ?>
 <?php include '../includes/footer.php'; ?>

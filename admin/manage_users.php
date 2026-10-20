@@ -13,9 +13,11 @@ $departments = $pdo->query("SELECT * FROM departments ORDER BY name")->fetchAll(
 
 function nullable_id($v) { return ($v === '' || $v === null) ? null : (int)$v; }
 
+$fieldErrors = [];
+$reopenData = [];
+$reopenModal = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
-    $error = null;
     if ($action === 'add' || $action === 'edit') {
         $username = trim($_POST['username'] ?? '');
         $name = trim($_POST['name'] ?? '');
@@ -27,17 +29,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $id = (int)($_POST['id'] ?? 0);
         $faculty_id = $department_id = $department_text = null;
 
-        if ($username === '' || $name === '') $error = 'กรุณากรอกข้อมูลให้ครบ';
-        elseif ($action === 'add' && ($pwError = password_strength_error($password))) $error = $pwError;
-        elseif ($action === 'edit' && $password !== '' && ($pwError = password_strength_error($password))) $error = $pwError;
-        elseif ($email !== null && !filter_var($email, FILTER_VALIDATE_EMAIL)) $error = 'รูปแบบอีเมลไม่ถูกต้อง';
-        elseif ($student_id !== null && strlen($student_id) > 10) $error = 'รหัสนักศึกษาต้องมีความยาวไม่เกิน 10 ตัวอักษร';
-        elseif ($year_level !== null && ($year_level < 1 || $year_level > 4)) $error = 'ชั้นปีต้องอยู่ระหว่าง 1-4';
+        if ($username === '') $fieldErrors['username'] = 'กรุณากรอก Username';
+        if ($name === '') $fieldErrors['name'] = 'กรุณากรอกชื่อ-นามสกุล';
+        if ($action === 'add' && ($pwError = password_strength_error($password))) $fieldErrors['password'] = $pwError;
+        elseif ($action === 'edit' && $password !== '' && ($pwError = password_strength_error($password))) $fieldErrors['password'] = $pwError;
+        if ($email !== null && !filter_var($email, FILTER_VALIDATE_EMAIL)) $fieldErrors['email'] = 'รูปแบบอีเมลไม่ถูกต้อง';
+        if ($student_id !== null && strlen($student_id) > 10) $fieldErrors['student_id'] = 'รหัสนักศึกษาต้องมีความยาวไม่เกิน 10 ตัวอักษร';
+        if ($year_level !== null && ($year_level < 1 || $year_level > 4)) $fieldErrors['year_level'] = 'ชั้นปีต้องอยู่ระหว่าง 1-4';
 
-        if (!$error) $error = identifier_conflict($pdo, $username, $student_id, $action === 'edit' ? [$table, $id] : null, $email);
-        if (!$error && $role === 'student') {
-            [$faculty_id, $department_id, $department_text, $error] = resolve_faculty_department($pdo, nullable_id($_POST['faculty_id'] ?? ''), nullable_id($_POST['department_id'] ?? ''));
-            if (!$error && $action === 'edit' && $department_id === null) {
+        if (empty($fieldErrors)) {
+            $conflict = identifier_conflict($pdo, $username, $student_id, $action === 'edit' ? [$table, $id] : null, $email);
+            if ($conflict) {
+                $field = strpos($conflict, 'อีเมล') !== false ? 'email' : (strpos($conflict, 'รหัสนักศึกษา') !== false ? 'student_id' : 'username');
+                $fieldErrors[$field] = $conflict;
+            }
+        }
+        if (empty($fieldErrors) && $role === 'student') {
+            [$faculty_id, $department_id, $department_text, $deptError] = resolve_faculty_department($pdo, nullable_id($_POST['faculty_id'] ?? ''), nullable_id($_POST['department_id'] ?? ''));
+            if ($deptError) $fieldErrors['department_id'] = $deptError;
+            if (!$deptError && $action === 'edit' && $department_id === null) {
                 // Keep legacy free-text department when the account was never linked to the department table
                 $old = $pdo->prepare("SELECT department, department_id FROM students WHERE id = ?");
                 $old->execute([$id]);
@@ -45,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($o && $o['department_id'] === null) $department_text = $o['department'];
             }
         }
-        if (!$error) {
+        if (empty($fieldErrors)) {
             if ($action === 'add') {
                 if ($table === 'students') {
                     $stmt = $pdo->prepare("INSERT INTO students (username, password, name, student_id, department, email, faculty_id, department_id, year_level) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
@@ -68,7 +78,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             header("Location: manage_users.php?role=$role&success=" . ($action === 'add' ? 'Added' : 'Updated')); exit;
         }
-        header("Location: manage_users.php?role=$role&error=" . urlencode($error)); exit;
+        if (!empty($fieldErrors)) {
+            $reopenModal = $action === 'add' ? 'addModal' : 'editModal';
+            $reopenData = $_POST;
+        }
     } elseif ($action === 'delete') {
         $id = (int)($_POST['id'] ?? 0);
         $pdo->prepare("DELETE FROM `$table` WHERE id = ?")->execute([$id]);
@@ -191,4 +204,5 @@ function user_form_fields($role, $faculties, $departments, $isEdit) { ?>
     </form>
   </div>
 </div>
+<?= $reopenModal ? reopen_modal_script($reopenModal, $reopenData, $fieldErrors) : '' ?>
 <?php include '../includes/footer.php'; ?>

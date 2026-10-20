@@ -1,24 +1,34 @@
 <?php
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 check_login('admin');
 
+$fieldErrors = [];
+$reopenData = [];
+$reopenModal = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     $title = trim($_POST['title'] ?? '');
     $desc = trim($_POST['description'] ?? '');
-    if ($action === 'add' && $title !== '') {
-        $pdo->prepare("INSERT INTO assessments (title, description) VALUES (?, ?)")->execute([$title, $desc]);
-        header("Location: manage_assessments.php?success=Added"); exit;
-    } elseif ($action === 'edit' && $title !== '') {
-        $pdo->prepare("UPDATE assessments SET title = ?, description = ? WHERE id = ?")->execute([$title, $desc, (int)($_POST['id'] ?? 0)]);
-        header("Location: manage_assessments.php?success=Updated"); exit;
+    if ($action === 'add' || $action === 'edit') {
+        if ($title === '') $fieldErrors['title'] = 'กรุณากรอกชื่อแบบประเมิน';
+        if (empty($fieldErrors)) {
+            if ($action === 'add') {
+                $pdo->prepare("INSERT INTO assessments (title, description) VALUES (?, ?)")->execute([$title, $desc]);
+                header("Location: manage_assessments.php?success=Added"); exit;
+            } else {
+                $pdo->prepare("UPDATE assessments SET title = ?, description = ? WHERE id = ?")->execute([$title, $desc, (int)($_POST['id'] ?? 0)]);
+                header("Location: manage_assessments.php?success=Updated"); exit;
+            }
+        }
+        $reopenModal = $action === 'add' ? 'addModal' : 'editModal';
+        $reopenData = $_POST;
     } elseif ($action === 'delete') {
         $id = (int)($_POST['id'] ?? 0);
         if ($id === 1) { header("Location: manage_assessments.php?error=" . urlencode('ไม่สามารถลบแบบประเมินมาตรฐานได้ (ใช้กับแบบประเมินสมาชิกใหม่)')); exit; }
         $pdo->prepare("DELETE FROM assessments WHERE id = ?")->execute([$id]);
         header("Location: manage_assessments.php?success=Deleted"); exit;
     }
-    header("Location: manage_assessments.php?error=" . urlencode('กรุณากรอกชื่อแบบประเมิน')); exit;
 }
 
 $assessments = $pdo->query("SELECT a.*, (SELECT COUNT(*) FROM assessment_questions q WHERE q.assessment_id = a.id) AS q_count FROM assessments a")->fetchAll();
@@ -98,4 +108,5 @@ function assessment_fields() { ?>
     </form>
   </div>
 </div>
+<?= $reopenModal ? reopen_modal_script($reopenModal, $reopenData, $fieldErrors) : '' ?>
 <?php include '../includes/footer.php'; ?>

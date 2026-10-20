@@ -6,6 +6,8 @@
     <title>ระบบวิเคราะห์ Soft Skill</title>
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons (bi bi-* classes used across the app) -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <!-- Custom CSS -->
     <link href="/Soft-Skill/assets/css/style.css" rel="stylesheet">
     <!-- Chart.js -->

@@ -1,22 +1,32 @@
 <?php
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 check_login('admin');
 
+$fieldErrors = [];
+$reopenData = [];
+$reopenModal = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     $name = trim($_POST['skill_name'] ?? '');
     $desc = trim($_POST['description'] ?? '');
-    if ($action === 'add' && $name !== '') {
-        $pdo->prepare("INSERT INTO soft_skills (skill_name, description) VALUES (?, ?)")->execute([$name, $desc]);
-        header("Location: manage_skills.php?success=Added"); exit;
-    } elseif ($action === 'edit' && $name !== '') {
-        $pdo->prepare("UPDATE soft_skills SET skill_name = ?, description = ? WHERE id = ?")->execute([$name, $desc, (int)($_POST['id'] ?? 0)]);
-        header("Location: manage_skills.php?success=Updated"); exit;
+    if ($action === 'add' || $action === 'edit') {
+        if ($name === '') $fieldErrors['skill_name'] = 'กรุณากรอกชื่อทักษะ';
+        if (empty($fieldErrors)) {
+            if ($action === 'add') {
+                $pdo->prepare("INSERT INTO soft_skills (skill_name, description) VALUES (?, ?)")->execute([$name, $desc]);
+                header("Location: manage_skills.php?success=Added"); exit;
+            } else {
+                $pdo->prepare("UPDATE soft_skills SET skill_name = ?, description = ? WHERE id = ?")->execute([$name, $desc, (int)($_POST['id'] ?? 0)]);
+                header("Location: manage_skills.php?success=Updated"); exit;
+            }
+        }
+        $reopenModal = $action === 'add' ? 'addModal' : 'editModal';
+        $reopenData = $_POST;
     } elseif ($action === 'delete') {
         $pdo->prepare("DELETE FROM soft_skills WHERE id = ?")->execute([(int)($_POST['id'] ?? 0)]);
         header("Location: manage_skills.php?success=Deleted"); exit;
     }
-    header("Location: manage_skills.php?error=" . urlencode('กรุณากรอกชื่อทักษะ')); exit;
 }
 
 $skills = $pdo->query("SELECT * FROM soft_skills")->fetchAll();
@@ -94,4 +104,5 @@ function skill_fields() { ?>
     </form>
   </div>
 </div>
+<?= $reopenModal ? reopen_modal_script($reopenModal, $reopenData, $fieldErrors) : '' ?>
 <?php include '../includes/footer.php'; ?>

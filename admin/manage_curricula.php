@@ -1,7 +1,11 @@
 <?php
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 check_login('admin');
 
+$fieldErrors = [];
+$reopenData = [];
+$reopenModal = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     $name = trim($_POST['name'] ?? '');
@@ -9,28 +13,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $department_id = (int)($_POST['department_id'] ?? 0);
     $year_level = ($_POST['year_level'] ?? '') === '' ? null : max(1, min(4, (int)$_POST['year_level']));
     $education_level = trim($_POST['education_level'] ?? '') ?: null;
-    $error = null;
 
-    if ($name === '' || !$department_id) {
-        $error = 'กรุณากรอกข้อมูลให้ครบ';
-    } else {
-        $dep = $pdo->prepare("SELECT id FROM departments WHERE id = ?");
-        $dep->execute([$department_id]);
-        if (!$dep->fetch()) $error = 'ไม่พบสาขาที่เลือก';
-    }
-
-    if (!$error) {
-        if ($action === 'add') {
-            $pdo->prepare("INSERT INTO curricula (department_id, name, year_level, education_level) VALUES (?, ?, ?, ?)")
-                ->execute([$department_id, $name, $year_level, $education_level]);
-        } elseif ($action === 'edit') {
-            $pdo->prepare("UPDATE curricula SET department_id = ?, name = ?, year_level = ?, education_level = ? WHERE id = ?")
-                ->execute([$department_id, $name, $year_level, $education_level, $id]);
-        } elseif ($action === 'delete') {
-            $pdo->prepare("DELETE FROM curricula WHERE id = ?")->execute([$id]);
+    if ($action === 'add' || $action === 'edit') {
+        if ($name === '') $fieldErrors['name'] = 'กรุณากรอกชื่อหลักสูตร';
+        if (!$department_id) $fieldErrors['department_id'] = 'กรุณาเลือกสาขา';
+        elseif (empty($fieldErrors)) {
+            $dep = $pdo->prepare("SELECT id FROM departments WHERE id = ?");
+            $dep->execute([$department_id]);
+            if (!$dep->fetch()) $fieldErrors['department_id'] = 'ไม่พบสาขาที่เลือก';
         }
+
+        if (empty($fieldErrors)) {
+            if ($action === 'add') {
+                $pdo->prepare("INSERT INTO curricula (department_id, name, year_level, education_level) VALUES (?, ?, ?, ?)")
+                    ->execute([$department_id, $name, $year_level, $education_level]);
+            } else {
+                $pdo->prepare("UPDATE curricula SET department_id = ?, name = ?, year_level = ?, education_level = ? WHERE id = ?")
+                    ->execute([$department_id, $name, $year_level, $education_level, $id]);
+            }
+            header('Location: manage_curricula.php?success=Saved'); exit;
+        }
+        $reopenModal = $action === 'add' ? 'addModal' : 'editModal';
+        $reopenData = $_POST;
+    } elseif ($action === 'delete') {
+        $pdo->prepare("DELETE FROM curricula WHERE id = ?")->execute([$id]);
+        header('Location: manage_curricula.php?success=Saved'); exit;
     }
-    header('Location: manage_curricula.php?' . ($error ? 'error=' . urlencode($error) : 'success=Saved')); exit;
 }
 
 $departments = $pdo->query("SELECT d.*, f.name AS faculty_name FROM departments d JOIN faculties f ON d.faculty_id = f.id ORDER BY f.name, d.name")->fetchAll();
@@ -118,4 +126,5 @@ function curriculum_fields($departments) { ?>
     </form>
   </div>
 </div>
+<?= $reopenModal ? reopen_modal_script($reopenModal, $reopenData, $fieldErrors) : '' ?>
 <?php include '../includes/footer.php'; ?>

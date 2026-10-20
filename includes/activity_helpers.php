@@ -1,24 +1,29 @@
 <?php
 // Shared by admin/manage_activities.php and manager/my_activities.php
 
+// Returns [$data, $fieldErrors]; $fieldErrors is empty when everything validated.
 function parse_activity_post() {
     $title = trim($_POST['title'] ?? '');
     $start = $_POST['start_date'] ?? '';
     $end = $_POST['end_date'] ?? '';
     $regCloseRaw = trim($_POST['registration_close_at'] ?? '');
     $regClose = null;
-    $error = null;
+    $fieldErrors = [];
     if ($regCloseRaw !== '') {
         $dt = DateTime::createFromFormat('Y-m-d\TH:i', $regCloseRaw);
         if (!$dt || !empty(DateTime::getLastErrors()['warning_count'])) {
-            $error = 'รูปแบบวันปิดรับสมัครไม่ถูกต้อง';
+            $fieldErrors['registration_close_at'] = 'รูปแบบวันปิดรับสมัครไม่ถูกต้อง';
         } else {
             $regClose = $dt->format('Y-m-d H:i:00');
         }
     }
-    if (!$error && ($title === '' || $start === '' || $end === '')) $error = 'กรุณากรอกข้อมูลให้ครบ';
-    elseif (!$error && $end < $start) $error = 'วันที่สิ้นสุดต้องไม่ก่อนวันที่เริ่ม';
-    elseif (!$error && $regClose !== null && substr($regClose, 0, 10) > $end) $error = 'วันปิดรับสมัครต้องไม่หลังวันที่สิ้นสุดกิจกรรม';
+    if ($title === '') $fieldErrors['title'] = 'กรุณากรอกชื่อกิจกรรม';
+    if ($start === '') $fieldErrors['start_date'] = 'กรุณาเลือกวันที่เริ่ม';
+    if ($end === '') $fieldErrors['end_date'] = 'กรุณาเลือกวันที่สิ้นสุด';
+    elseif ($start !== '' && $end < $start) $fieldErrors['end_date'] = 'วันที่สิ้นสุดต้องไม่ก่อนวันที่เริ่ม';
+    if (!isset($fieldErrors['registration_close_at']) && $regClose !== null && $end !== '' && substr($regClose, 0, 10) > $end) {
+        $fieldErrors['registration_close_at'] = 'วันปิดรับสมัครต้องไม่หลังวันที่สิ้นสุดกิจกรรม';
+    }
     return [[
         'title' => $title,
         'description' => trim($_POST['description'] ?? ''),
@@ -30,7 +35,7 @@ function parse_activity_post() {
         'status' => ($_POST['status'] ?? 'open') === 'closed' ? 'closed' : 'open',
         'assessment_id' => ($_POST['assessment_id'] ?? '') === '' ? null : (int)$_POST['assessment_id'],
         'skills' => array_map('intval', (array)($_POST['skills'] ?? [])),
-    ], $error];
+    ], $fieldErrors];
 }
 
 function save_activity($pdo, $data, $manager_id, $id = null) {

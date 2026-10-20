@@ -101,9 +101,9 @@ function report_box($title, $class, $report, $activity_id, $type) { ?>
 <?php if($activity_id && !empty($labels)): ?>
 <div class="row">
     <div class="col-md-5 mb-4">
-        <div class="card shadow-sm border-0 h-100">
+        <div class="card shadow-sm border-0">
             <div class="card-header bg-dark text-white fw-bold py-3">แผนภูมิเปรียบเทียบทักษะ (% คะแนน)</div>
-            <div class="card-body d-flex align-items-center justify-content-center">
+            <div class="card-body">
                 <canvas id="radarChart" style="max-height: 400px;"></canvas>
             </div>
         </div>

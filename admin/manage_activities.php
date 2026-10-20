@@ -1,25 +1,32 @@
 <?php
 require_once '../config/db.php';
 require_once '../includes/activity_helpers.php';
+require_once '../includes/functions.php';
 check_login('admin');
 
+$fieldErrors = [];
+$reopenData = [];
+$reopenModal = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     if ($action === 'add' || $action === 'edit') {
-        [$data, $error] = parse_activity_post();
+        [$data, $fieldErrors] = parse_activity_post();
         $manager = (int)($_POST['manager_id'] ?? 0);
         $chk = $pdo->prepare("SELECT id FROM activity_supervisors WHERE id = ?");
         $chk->execute([$manager]);
-        if (!$error && !$chk->fetch()) $error = 'กรุณาเลือกผู้ดูแลกิจกรรม';
-        if ($error) { header("Location: manage_activities.php?error=" . urlencode($error)); exit; }
-        if ($action === 'add') {
-            save_activity($pdo, $data, $manager);
-        } else {
-            $id = (int)($_POST['id'] ?? 0);
-            save_activity($pdo, $data, $manager, $id);
-            $pdo->prepare("UPDATE activities SET manager_id = ? WHERE id = ?")->execute([$manager, $id]);
+        if (!$chk->fetch()) $fieldErrors['manager_id'] = 'กรุณาเลือกผู้ดูแลกิจกรรม';
+        if (empty($fieldErrors)) {
+            if ($action === 'add') {
+                save_activity($pdo, $data, $manager);
+            } else {
+                $id = (int)($_POST['id'] ?? 0);
+                save_activity($pdo, $data, $manager, $id);
+                $pdo->prepare("UPDATE activities SET manager_id = ? WHERE id = ?")->execute([$manager, $id]);
+            }
+            header("Location: manage_activities.php?success=Saved"); exit;
         }
-        header("Location: manage_activities.php?success=Saved"); exit;
+        $reopenModal = $action === 'add' ? 'addModal' : 'editModal';
+        $reopenData = $_POST;
     } elseif ($action === 'delete') {
         $pdo->prepare("DELETE FROM activities WHERE id = ?")->execute([(int)($_POST['id'] ?? 0)]);
         header("Location: manage_activities.php?success=Deleted"); exit;
@@ -122,4 +129,5 @@ function manager_select($managers) { ?>
     </form>
   </div>
 </div>
+<?= $reopenModal ? reopen_modal_script($reopenModal, $reopenData, $fieldErrors) : '' ?>
 <?php include '../includes/footer.php'; ?>
