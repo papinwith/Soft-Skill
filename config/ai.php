@@ -5,5 +5,5 @@ return [
     'url'             => getenv('OLLAMA_URL') ?: 'http://127.0.0.1:11434/api/generate',
     'model'           => getenv('OLLAMA_MODEL') ?: 'Soft-Skill',
     'connect_timeout' => 3,
-    'timeout'         => 60,
+    'timeout'         => 90,
 ];
