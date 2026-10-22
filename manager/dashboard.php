@@ -60,6 +60,9 @@ $responsesCount = $responsesCount->fetchColumn();
                     <a href="tracking_reports.php" class="list-group-item list-group-item-action list-group-item-info d-flex justify-content-between align-items-center">
                         ตรวจสอบผลการประเมินและติดตามการพัฒนา <span class="badge bg-info text-dark rounded-pill"><i class="bi bi-graph-up"></i></span>
                     </a>
+                    <a href="manage_staff.php" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                        เพิ่มผู้ดูแลกิจกรรมคนอื่น <span class="badge bg-secondary rounded-pill"><i class="bi bi-person-plus"></i></span>
+                    </a>
                 </div>
             </div>
         </div>

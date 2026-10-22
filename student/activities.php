@@ -98,7 +98,7 @@ include '../includes/header.php';
                         <?php if(!$done_pre): ?>
                             <a href="assessment.php?type=pre&activity_id=<?= $aid ?>" class="btn btn-outline-primary w-100 fw-bold shadow-sm mb-2">ทำแบบประเมินก่อนเข้าร่วม (Pre-test)</a>
                         <?php else: ?>
-                            <div class="mb-2"><span class="text-success fw-bold">ทำแบบประเมิน Pre-test เรียบร้อยแล้ว</span></div>
+                            <div class="mb-2"><span class="text-success fw-bold">ทำแบบประเมิน Pre-test เรียบร้อยแล้ว</span> <a href="assessment.php?type=pre&activity_id=<?= $aid ?>" class="small">(แก้ไขคำตอบ)</a></div>
 
                             <?php if(!$done_post): ?>
                                 <?php if($status === 'attended'): ?>
@@ -108,7 +108,7 @@ include '../includes/header.php';
                                 <?php endif; ?>
                                 <a href="analysis_report.php?activity_id=<?= $aid ?>" class="btn btn-info text-white w-100 mt-2 fw-bold shadow-sm">ดูรายงานวิเคราะห์ (Pre-test)</a>
                             <?php else: ?>
-                                <div class="mb-2"><span class="text-success fw-bold">ทำแบบประเมินครบถ้วนแล้ว</span></div>
+                                <div class="mb-2"><span class="text-success fw-bold">ทำแบบประเมินครบถ้วนแล้ว</span> <a href="assessment.php?type=post&activity_id=<?= $aid ?>" class="small">(แก้ไขคำตอบ Post-test)</a></div>
                                 <a href="analysis_report.php?activity_id=<?= $aid ?>" class="btn btn-info text-white w-100 mt-2 fw-bold shadow-sm">ดูรายงานวิเคราะห์จาก AI</a>
                             <?php endif; ?>
                         <?php endif; ?>

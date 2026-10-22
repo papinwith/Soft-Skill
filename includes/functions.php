@@ -23,7 +23,10 @@ function reopen_modal_script($modalId, $data, $fieldErrors) {
 
 // Shown next to any skill-level badge so the 80/60/40% cutoffs are never a mystery
 function skill_level_legend_html() {
-    return '<p class="small text-muted mb-0">
+    return '<p class="small text-muted mb-1">
+        <strong>วิธีคำนวณ %:</strong> (ผลรวมคะแนนที่ตอบในด้านนั้น ÷ (จำนวนข้อ × 5)) × 100 — ทุกข้อมีน้ำหนักเท่ากัน
+    </p>
+    <p class="small text-muted mb-0">
         เกณฑ์ระดับทักษะ: <span class="badge bg-success">ดีเยี่ยม</span> ตั้งแต่ 80% ขึ้นไป ·
         <span class="badge bg-primary">ดี</span> 60–79% ·
         <span class="badge bg-warning text-dark">พอใช้</span> 40–59% ·
@@ -160,13 +163,17 @@ function overall_pct($rows) {
 }
 
 // Lowest-scoring skills that are still below the "Excellent" level (80%)
-function weak_skills($rows, $limit = 2) {
+function weak_skills($rows, $limit = 5) {
     $rows = array_values(array_filter($rows, function ($r) { return $r['pct'] < 80; }));
     usort($rows, function ($a, $b) { return $a['pct'] <=> $b['pct']; });
     return array_slice($rows, 0, $limit);
 }
 
+// Only counts as "strong" if it's actually good in absolute terms (>= 60%, the "ดี" tier) -
+// otherwise the top-2-by-rank pick could call a 20-40% skill "โดดเด่น" just because it beat
+// the student's other, even weaker, skills.
 function strong_skills($rows, $limit = 2) {
+    $rows = array_values(array_filter($rows, function ($r) { return $r['pct'] >= 60; }));
     usort($rows, function ($a, $b) { return $b['pct'] <=> $a['pct']; });
     return array_slice($rows, 0, $limit);
 }
@@ -213,14 +220,15 @@ function rule_based_analysis($rows, $type, $studentName, $activityName, $preRows
     }
     $names = function ($list) { return implode(', ', array_column($list, 'skill_name')); };
     $weakText = $weak ? "ส่วนทักษะที่ควรพัฒนาเพิ่มเติมคือ " . $names($weak) : "และทุกทักษะอยู่ในระดับดีเยี่ยม";
+    $strongText = $strong ? "ทักษะที่โดดเด่นคือ " . $names($strong) . " " : "ยังไม่มีทักษะที่อยู่ในระดับโดดเด่นเป็นพิเศษ ";
 
     if ($type === 'post' && $preRows) {
         $diff = $overall - overall_pct($preRows);
         $trend = $diff > 0 ? "พัฒนาขึ้น $diff%" : ($diff < 0 ? "ลดลง " . abs($diff) . "%" : "เท่าเดิม");
-        $analysis = "หลังเข้าร่วมกิจกรรม $activityName $studentName มีคะแนนภาพรวม $overall% ($grp) เมื่อเทียบกับก่อนเข้าร่วมกิจกรรมถือว่า$trend ทักษะที่โดดเด่นคือ " . $names($strong) . " $weakText";
+        $analysis = "หลังเข้าร่วมกิจกรรม $activityName $studentName มีคะแนนภาพรวม $overall% ($grp) เมื่อเทียบกับก่อนเข้าร่วมกิจกรรมถือว่า$trend $strongText$weakText";
     } else {
         $when = $type === 'baseline' ? 'ระดับพื้นฐาน' : 'ก่อนเข้าร่วมกิจกรรม ' . $activityName;
-        $analysis = "จากการประเมิน$when $studentName มีคะแนนภาพรวม $overall% ($grp) ทักษะที่โดดเด่นคือ " . $names($strong) . " $weakText";
+        $analysis = "จากการประเมิน$when $studentName มีคะแนนภาพรวม $overall% ($grp) $strongText$weakText";
     }
     $recommendation = $weak
         ? "แนะนำให้ฝึกฝนทักษะ " . $names($weak) . " อย่างต่อเนื่อง โดยเลือกเข้าร่วมกิจกรรมที่เน้นทักษะดังกล่าวและลงมือปฏิบัติจริงกับผู้อื่น พร้อมทบทวนผลประเมินเป็นระยะเพื่อติดตามพัฒนาการ"
@@ -263,12 +271,26 @@ function get_ai_analysis($rows, $type, $studentName, $activityName, $preRows = n
     if (!$rows) return $fallback;
 
     // Persona, tone, and the Analysis/Recommendation output format are baked into the
-    // "Soft-Skill" custom model's SYSTEM prompt (see ./Modelfile) - only the data goes here.
+    // "Soft-Skill" custom model's SYSTEM prompt (see ./Modelfile). The model is unreliable at
+    // arithmetic and at judging what counts as "โดดเด่น" on its own (it would sometimes call a
+    // 40% skill outstanding just for being the student's relative best) - so overall %, which
+    // skills qualify as strong (>=60%) and which need work (<80%) are all computed here in PHP
+    // with the same logic as the rule-based fallback, and handed to the model as given facts it
+    // must use rather than recompute.
+    $overall = overall_pct($rows);
+    $strong = strong_skills($rows, 2);
+    $weak = weak_skills($rows, 2);
+    $names = function ($list) { return implode(', ', array_column($list, 'skill_name')); };
+
     $typeLabel = $type === 'baseline' ? 'ระดับพื้นฐานของสมาชิกใหม่' : ($type === 'pre' ? 'ก่อนเข้าร่วมกิจกรรม' : 'หลังเข้าร่วมกิจกรรม');
     $prompt = "วิเคราะห์ผลการประเมินของนักศึกษาชื่อ $studentName ($typeLabel: $activityName)\n";
+    $prompt .= "คะแนนรวมทุกด้าน (คำนวณไว้แล้ว ห้ามคำนวณใหม่): $overall%\n";
     foreach ($rows as $r) {
         $prompt .= "- {$r['skill_name']}: {$r['total']}/{$r['max_score']} ({$r['pct']}%)\n";
     }
+    $prompt .= "ทักษะที่โดดเด่น (คะแนน 60% ขึ้นไปเท่านั้น): " . ($strong ? $names($strong) : "ไม่มี ยังไม่มีทักษะใดถึงเกณฑ์") . "\n";
+    $prompt .= "ทักษะที่ควรพัฒนา (คะแนนต่ำกว่า 80%): " . ($weak ? $names($weak) : "ไม่มี ทุกด้านอยู่ในระดับดีเยี่ยม") . "\n";
+    $prompt .= "ห้ามเรียกทักษะอื่นนอกเหนือจากที่ระบุว่า \"โดดเด่น\" แม้จะมีคะแนนสูงสุดในกลุ่มก็ตาม ถ้าไม่ถึง 60%\n";
     if ($type === 'post' && $preRows) {
         $prompt .= "ผลก่อนเข้าร่วมกิจกรรม:\n";
         foreach ($preRows as $r) $prompt .= "- {$r['skill_name']}: {$r['pct']}%\n";

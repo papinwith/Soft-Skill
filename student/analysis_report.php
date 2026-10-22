@@ -41,7 +41,7 @@ if ($activity_id) {
         $reports[$r['type']] = $r;
     }
     $latest = $postRows ?: $preRows;
-    $recommended = recommend_activities($pdo, $student_id, weak_skills($latest, 2));
+    $recommended = recommend_activities($pdo, $student_id, weak_skills($latest));
 }
 
 $labels = array_column($preRows ?: $postRows, 'skill_name');
@@ -131,7 +131,7 @@ function report_box($title, $class, $report, $activity_id, $type) { ?>
             </div>
         </div>
 
-        <?php $weak = weak_skills($postRows ?: $preRows, 2); ?>
+        <?php $weak = weak_skills($postRows ?: $preRows); ?>
         <div class="card shadow-sm border-warning mb-4">
             <div class="card-header bg-warning fw-bold">จุดที่ควรพัฒนา</div>
             <div class="card-body">

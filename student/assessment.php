@@ -9,12 +9,12 @@ $type = $_GET['type'] ?? 'pre';
 if (!in_array($type, ['baseline', 'pre', 'post'], true)) die("Invalid assessment type");
 if ($type !== 'baseline' && !$activity_id) die("Invalid Activity ID");
 
+$existingId = null;
+
 if ($type === 'baseline') {
     $check = $pdo->prepare("SELECT id FROM student_assessments WHERE student_id = ? AND type = 'baseline' LIMIT 1");
     $check->execute([$student_id]);
-    if ($check->fetch()) {
-        header("Location: profile.php"); exit;
-    }
+    $existingId = $check->fetchColumn() ?: null;
     $activityData = ['title' => 'แบบประเมินสำหรับสมาชิกใหม่ (Baseline Assessment)'];
     $activity_id = null;
     $assessment_id = baseline_assessment_id($pdo);
@@ -38,9 +38,7 @@ if ($type === 'baseline') {
 
     $check = $pdo->prepare("SELECT id FROM student_assessments WHERE student_id = ? AND activity_id = ? AND type = ? LIMIT 1");
     $check->execute([$student_id, $activity_id, $type]);
-    if ($check->fetch()) {
-        header("Location: analysis_report.php?activity_id=$activity_id"); exit;
-    }
+    $existingId = $check->fetchColumn() ?: null;
     if ($type === 'post') {
         $pre = $pdo->prepare("SELECT id FROM student_assessments WHERE student_id = ? AND activity_id = ? AND type = 'pre' LIMIT 1");
         $pre->execute([$student_id, $activity_id]);
@@ -50,6 +48,18 @@ if ($type === 'baseline') {
 }
 
 $questions = get_assessment_questions($pdo, $assessment_id);
+$assessmentDesc = $pdo->prepare("SELECT description FROM assessments WHERE id = ?");
+$assessmentDesc->execute([$assessment_id]);
+$assessmentDesc = $assessmentDesc->fetchColumn();
+
+// When re-opening an already-submitted assessment, preload its saved answers so the form
+// shows the student's previous choices instead of a blank one (edit in place, not re-do).
+$existingAnswers = [];
+if ($existingId) {
+    $ansStmt = $pdo->prepare("SELECT question_id, score FROM answers WHERE student_assessment_id = ?");
+    $ansStmt->execute([$existingId]);
+    foreach ($ansStmt->fetchAll() as $a) $existingAnswers[(int)$a['question_id']] = (int)$a['score'];
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $scores = $_POST['score'] ?? [];
@@ -66,9 +76,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($scores_valid) {
         $pdo->beginTransaction();
         $now = date('Y-m-d H:i:s');
-        $sa = $pdo->prepare("INSERT INTO student_assessments (student_id, assessment_id, activity_id, type, status, started_at, submitted_at) VALUES (?, ?, ?, ?, 'submitted', ?, ?)");
-        $sa->execute([$student_id, $assessment_id, $activity_id, $type, $now, $now]);
-        $student_assessment_id = (int)$pdo->lastInsertId();
+        if ($existingId) {
+            $student_assessment_id = $existingId;
+            $pdo->prepare("UPDATE student_assessments SET submitted_at = ? WHERE id = ?")->execute([$now, $existingId]);
+            $pdo->prepare("DELETE FROM answers WHERE student_assessment_id = ?")->execute([$existingId]);
+        } else {
+            $sa = $pdo->prepare("INSERT INTO student_assessments (student_id, assessment_id, activity_id, type, status, started_at, submitted_at) VALUES (?, ?, ?, ?, 'submitted', ?, ?)");
+            $sa->execute([$student_id, $assessment_id, $activity_id, $type, $now, $now]);
+            $student_assessment_id = (int)$pdo->lastInsertId();
+        }
         $stmt = $pdo->prepare("INSERT INTO answers (student_assessment_id, question_id, score) VALUES (?, ?, ?)");
         foreach ($scores as $q_id => $score) {
             $stmt->execute([$student_assessment_id, (int)$q_id, (int)$score]);
@@ -80,10 +96,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $aiResult = get_ai_analysis($rows, $type, $_SESSION['name'], $activityData['title'], $preRows);
         save_ai_report($pdo, $student_id, $activity_id, $type, $aiResult);
 
+        $successMsg = $existingId ? 'Updated' : 'Submitted';
         if ($type === 'baseline') {
             header("Location: profile.php?success=baseline"); exit;
         } else {
-            header("Location: analysis_report.php?activity_id=$activity_id&success=Submitted"); exit;
+            header("Location: analysis_report.php?activity_id=$activity_id&success=$successMsg"); exit;
         }
     }
     $form_error = 'กรุณาตอบคำถามให้ครบทุกข้อ (คะแนน 1-' . SCORE_MAX_PER_QUESTION . ')';
@@ -93,7 +110,10 @@ include '../includes/header.php';
 $backHref = $type === 'baseline' ? 'profile.php' : 'activities.php';
 ?>
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h3 class="mb-0">แบบประเมินตนเอง <?php echo $type == 'pre' ? 'ก่อนเข้าร่วม (Pre-test)' : ($type == 'post' ? 'หลังเข้าร่วม (Post-test)' : 'สำหรับสมาชิกใหม่ (Baseline)'); ?></h3>
+    <h3 class="mb-0">
+        <?= $existingId ? 'แก้ไขคำตอบ' : 'แบบประเมินตนเอง' ?>
+        <?php echo $type == 'pre' ? 'ก่อนเข้าร่วม (Pre-test)' : ($type == 'post' ? 'หลังเข้าร่วม (Post-test)' : 'สำหรับสมาชิกใหม่ (Baseline)'); ?>
+    </h3>
     <?php if ($type !== 'baseline'): ?>
     <a href="<?= $backHref ?>" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> กลับ</a>
     <?php endif; ?>
@@ -104,6 +124,11 @@ $backHref = $type === 'baseline' ? 'profile.php' : 'activities.php';
     <div class="card-header bg-primary text-white py-3 fw-bold fs-5">
         กิจกรรม: <?= htmlspecialchars($activityData['title']) ?>
     </div>
+    <?php if ($assessmentDesc): ?>
+    <div class="card-body bg-white border-bottom py-2 px-4">
+        <p class="small text-muted mb-0"><?= nl2br(htmlspecialchars($assessmentDesc)) ?></p>
+    </div>
+    <?php endif; ?>
     <div class="card-body bg-light p-4">
         <?php if (empty($questions)): ?>
             <div class="alert alert-warning mb-0">ยังไม่มีคำถามในแบบประเมินนี้ กรุณาติดต่อผู้ดูแลระบบ</div>
@@ -122,19 +147,19 @@ $backHref = $type === 'baseline' ? 'profile.php' : 'activities.php';
                 <div class="mb-4 pb-3 border-bottom">
                     <p class="mb-3 fw-bold fs-6"><?= ($index+1) ?>. <?= htmlspecialchars($q['question_text']) ?></p>
                     <div class="d-flex justify-content-between align-items-center mt-3 px-md-5">
-                        <span class="text-muted small d-none d-md-inline">น้อยที่สุด</span>
+                        <span class="text-muted small d-none d-md-inline">ไม่เคย</span>
                         <?php for($i=1; $i<=SCORE_MAX_PER_QUESTION; $i++): ?>
                         <div class="form-check form-check-inline mx-auto cursor-pointer">
-                            <input class="form-check-input" type="radio" name="score[<?= $q['id'] ?>]" value="<?= $i ?>" required id="q<?= $q['id'] ?>_<?= $i ?>" style="transform: scale(1.5);">
+                            <input class="form-check-input" type="radio" name="score[<?= $q['id'] ?>]" value="<?= $i ?>" required id="q<?= $q['id'] ?>_<?= $i ?>" style="transform: scale(1.5);" <?= (($existingAnswers[$q['id']] ?? null) === $i) ? 'checked' : '' ?>>
                             <label class="form-check-label ms-2 fw-bold form-text pt-1" for="q<?= $q['id'] ?>_<?= $i ?>"><?= $i ?></label>
                         </div>
                         <?php endfor; ?>
-                        <span class="text-muted small d-none d-md-inline">มากที่สุด</span>
+                        <span class="text-muted small d-none d-md-inline">เป็นประจำ</span>
                     </div>
                 </div>
             <?php endforeach; echo "</div></div>"; ?>
 
-            <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold shadow-sm py-3 mt-3">ส่งแบบประเมินและรับการวิเคราะห์จาก AI</button>
+            <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold shadow-sm py-3 mt-3"><?= $existingId ? 'บันทึกการแก้ไขและวิเคราะห์ใหม่ด้วย AI' : 'ส่งแบบประเมินและรับการวิเคราะห์จาก AI' ?></button>
         </form>
         <?php endif; ?>
     </div>

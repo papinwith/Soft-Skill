@@ -1,6 +1,7 @@
--- Install order: soft.sql -> update_schema.sql -> update_schema_2.sql -> update_schema_3.sql -> php update_schema_4.php -> update_schema_5.sql
--- (schema_4 is a PHP script, not .sql, because it migrates data and repoints foreign keys -
--- run it with `php update_schema_4.php` after the three .sql files above)
+-- Install order: soft.sql -> update_schema.sql -> update_schema_2.sql -> update_schema_3.sql -> php update_schema_4.php -> update_schema_5.sql -> php update_schema_6.php
+-- (schema_4 and schema_6 are PHP scripts, not .sql: schema_4 migrates data and repoints
+-- foreign keys, and schema_6 inserts Thai question text where the `mysql` CLI's default
+-- charset on this machine mangles UTF-8 from a plain .sql import -- both run via `php ...`)
 CREATE DATABASE IF NOT EXISTS soft_skill_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE soft_skill_db;
 

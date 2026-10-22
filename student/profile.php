@@ -29,7 +29,7 @@ $rows = get_skill_scores($pdo, $student_id, null, 'baseline');
 $labels = array_column($rows, 'skill_name');
 $scoresData = array_column($rows, 'pct');
 
-$weak = weak_skills($rows, 2);
+$weak = weak_skills($rows);
 $recommended = recommend_activities($pdo, $student_id, $weak);
 
 include '../includes/header.php';
@@ -41,6 +41,9 @@ include '../includes/header.php';
             <p class="text-muted mb-0">ข้อมูลส่วนตัว ระดับทักษะพื้นฐาน และกิจกรรมที่แนะนำเพื่อพัฒนาทักษะที่ควรเสริม</p>
         </div>
         <div class="d-flex gap-2">
+            <?php if (!empty($rows)): ?>
+            <a href="assessment.php?type=baseline" class="btn btn-outline-secondary"><i class="bi bi-pencil-square"></i> แก้ไขคำตอบ</a>
+            <?php endif; ?>
             <a href="activities.php" class="btn btn-outline-primary"><i class="bi bi-calendar-check"></i> ลงทะเบียนกิจกรรม</a>
             <a href="analysis_report.php" class="btn btn-outline-info"><i class="bi bi-bar-chart-fill"></i> รายงานวิเคราะห์จาก AI</a>
         </div>
