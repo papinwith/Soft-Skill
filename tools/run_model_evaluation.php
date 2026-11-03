@@ -234,11 +234,12 @@ fwrite(STDERR, "$passed / $total cases passed all grounding checks. Average resp
 // labels -- "Benchmark" should read like a model-card capability list (MATH-500, GSM8K, ...),
 // not a dump of our own internal test-case names (issu.md #41/#42).
 function categorize_check($label) {
-    if ($label === 'ใช้โมเดลจริง (ไม่ fallback)') return 'ตอบจากโมเดลจริง (ไม่ fallback)';
-    if (str_starts_with($label, 'กล่าวถึงทักษะโดดเด่นที่ถูกต้อง')) return 'ระบุทักษะโดดเด่นถูกต้องตรงกับข้อมูล';
-    if ($label === 'ไม่มีทักษะโดดเด่น -> ต้องใช้ประโยคที่กำหนดตรงๆ') return 'ใช้ประโยคบังคับเมื่อไม่มีทักษะโดดเด่น';
-    if (str_starts_with($label, 'ไม่เรียก "')) return 'ไม่หลอนทักษะที่ไม่ถึงเกณฑ์ว่าโดดเด่น';
-    if ($label === 'มีคำแนะนำ (Recommendation) ไม่ว่างเปล่า') return 'ให้คำแนะนำที่ไม่ว่างเปล่าเสมอ';
+    // issu.md #46: more formal, polite wording for a dashboard other staff may see.
+    if ($label === 'ใช้โมเดลจริง (ไม่ fallback)') return 'ประมวลผลด้วยโมเดล AI จริง (ไม่ใช้ระบบสำรอง)';
+    if (str_starts_with($label, 'กล่าวถึงทักษะโดดเด่นที่ถูกต้อง')) return 'ระบุทักษะที่โดดเด่นได้ถูกต้องตรงตามข้อมูล';
+    if ($label === 'ไม่มีทักษะโดดเด่น -> ต้องใช้ประโยคที่กำหนดตรงๆ') return 'ใช้ข้อความที่กำหนดไว้อย่างถูกต้องเมื่อไม่มีทักษะโดดเด่น';
+    if (str_starts_with($label, 'ไม่เรียก "')) return 'ไม่ระบุทักษะที่ยังไม่ถึงเกณฑ์ว่าโดดเด่นอย่างผิดพลาด';
+    if ($label === 'มีคำแนะนำ (Recommendation) ไม่ว่างเปล่า') return 'ให้คำแนะนำที่เป็นประโยชน์ครบถ้วนทุกครั้ง';
     return $label;
 }
 $categoryTotals = [];

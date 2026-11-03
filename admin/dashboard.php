@@ -22,36 +22,44 @@ if (file_exists($evalPath)) {
 ?>
 <div class="row">
     <div class="col-md-3 mb-4">
-        <div class="card text-white bg-primary">
+        <a href="#user-management" class="text-decoration-none">
+        <div class="card text-white bg-primary h-100">
             <div class="card-body">
                 <h5 class="card-title">ผู้ใช้งานระบบ</h5>
                 <h2 class="mb-0"><?= $userCount ?></h2>
             </div>
         </div>
+        </a>
     </div>
     <div class="col-md-3 mb-4">
-        <div class="card text-white bg-success">
+        <a href="manage_activities.php" class="text-decoration-none">
+        <div class="card text-white bg-success h-100">
             <div class="card-body">
                 <h5 class="card-title">กิจกรรมทั้งหมด</h5>
                 <h2 class="mb-0"><?= $activityCount ?></h2>
             </div>
         </div>
+        </a>
     </div>
     <div class="col-md-3 mb-4">
-        <div class="card text-white bg-warning">
+        <a href="manage_skills.php" class="text-decoration-none">
+        <div class="card text-white bg-warning h-100">
             <div class="card-body">
                 <h5 class="card-title">Soft Skills</h5>
                 <h2 class="mb-0"><?= $skillCount ?></h2>
             </div>
         </div>
+        </a>
     </div>
     <div class="col-md-3 mb-4">
-        <div class="card text-white bg-info">
+        <a href="manage_assessments.php" class="text-decoration-none">
+        <div class="card text-white bg-info h-100">
             <div class="card-body">
                 <h5 class="card-title">แบบประเมิน</h5>
                 <h2 class="mb-0"><?= $assessmentCount ?></h2>
             </div>
         </div>
+        </a>
     </div>
 </div>
 
@@ -60,7 +68,7 @@ if (file_exists($evalPath)) {
         <div class="card">
             <div class="card-header bg-dark text-white">เมนูการจัดการหลัก</div>
             <div class="card-body">
-                <div class="list-group">
+                <div class="list-group" id="user-management">
                     <a href="manage_users.php?role=manager" class="list-group-item list-group-item-action">จัดการผู้ดูแลกิจกรรม (Activity Managers)</a>
                     <a href="manage_users.php?role=student" class="list-group-item list-group-item-action">จัดการนักศึกษา (Students)</a>
                     <a href="manage_activities.php" class="list-group-item list-group-item-action">จัดการกิจกรรม (Activities)</a>

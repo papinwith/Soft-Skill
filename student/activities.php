@@ -120,11 +120,14 @@ include '../includes/header.php';
                 <?php elseif(!$is_open): ?>
                     <span class="badge bg-secondary p-2 fs-6">ปิดรับสมัคร</span>
                 <?php else: ?>
-                    <form method="POST">
+                    <form method="POST"
+                          data-confirm-submit="ยืนยันสมัครเข้าร่วมกิจกรรม"
+                          data-confirm-body="ยืนยันสมัครเข้าร่วมกิจกรรมนี้หรือไม่? ระบบจะให้ทำแบบประเมินก่อนเข้าร่วม (Pre-test) ต่อทันที"
+                          data-loading-text="กำลังดำเนินการ กรุณารอสักครู่...">
                         <?= csrf_field() ?>
                         <input type="hidden" name="action" value="apply">
                         <input type="hidden" name="activity_id" value="<?= $aid ?>">
-                        <button type="submit" class="btn btn-primary w-100 fw-bold py-2 shadow-sm" onclick="return confirm('ยืนยันสมัครเข้าร่วมกิจกรรม? ระบบจะให้ทำแบบประเมินก่อนเข้าร่วม (Pre-test) ต่อทันที');">สมัครเข้าร่วมกิจกรรมนี้</button>
+                        <button type="submit" class="btn btn-primary w-100 fw-bold py-2 shadow-sm">สมัครเข้าร่วมกิจกรรมนี้</button>
                     </form>
                 <?php endif; ?>
             </div>

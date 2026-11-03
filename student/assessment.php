@@ -22,7 +22,7 @@ if ($type === 'baseline') {
         header("Location: profile.php"); exit;
     }
 } else {
-    $act = $pdo->prepare("SELECT title FROM activities WHERE id = ?");
+    $act = $pdo->prepare("SELECT title, description FROM activities WHERE id = ?");
     $act->execute([$activity_id]);
     $activityData = $act->fetch();
     if (!$activityData) render_error_page('ไม่พบกิจกรรมนี้ อาจถูกลบไปแล้ว', 'activities.php');
@@ -126,6 +126,15 @@ $backHref = $type === 'baseline' ? 'profile.php' : 'activities.php';
     <div class="card-header bg-primary text-white py-3 fw-bold fs-5">
         กิจกรรม: <?= htmlspecialchars($activityData['title']) ?>
     </div>
+    <?php if (!empty($activityData['description'])): ?>
+    <div class="card-body bg-white border-bottom py-2 px-4">
+        <p class="small mb-0">
+            <i class="bi bi-info-circle text-primary"></i>
+            <strong>เกี่ยวกับกิจกรรมนี้:</strong>
+            <?= nl2br(htmlspecialchars($activityData['description'])) ?>
+        </p>
+    </div>
+    <?php endif; ?>
     <?php if (!empty($targetSkills)): ?>
     <div class="card-body bg-white border-bottom py-2 px-4">
         <p class="small mb-0">

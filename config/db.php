@@ -111,11 +111,14 @@ function check_login($role = null) {
         global $pdo;
         $current_url = $_SERVER['REQUEST_URI'];
         
-        // Skip check if currently on baseline assessment or logout page
+        // Skip check if currently on baseline assessment, logout, or the per-tab
+        // re-verification page (issu.md #49) -- reverify.php must always be reachable or a
+        // student without a completed baseline could never get past it to begin with.
         $is_baseline_page = (strpos($current_url, 'assessment.php') !== false && strpos($current_url, 'type=baseline') !== false);
         $is_logout_page = (strpos($current_url, 'logout.php') !== false);
-        
-        if (!$is_baseline_page && !$is_logout_page && baseline_assessment_id($pdo) !== null) {
+        $is_reverify_page = (strpos($current_url, 'reverify.php') !== false);
+
+        if (!$is_baseline_page && !$is_logout_page && !$is_reverify_page && baseline_assessment_id($pdo) !== null) {
             $stmt = $pdo->prepare("SELECT id FROM student_assessments WHERE student_id = ? AND type = 'baseline' LIMIT 1");
             $stmt->execute([$_SESSION['user_id']]);
             if (!$stmt->fetch()) {

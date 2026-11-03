@@ -30,6 +30,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['role'] = $role;
             $_SESSION['name'] = $user['name'];
             $_SESSION['student_id'] = $user['student_id'] ?? null;
+            // Consumed by header.php on the very next page load (issu.md #49) so the tab that
+            // just actually typed the password isn't immediately bounced to reverify.php too.
+            $_SESSION['just_authenticated'] = true;
 
             if ($role === 'admin') header("Location: admin/dashboard.php");
             elseif ($role === 'manager') header("Location: manager/dashboard.php");
@@ -110,6 +113,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['role'] = 'student';
             $_SESSION['name'] = $name;
             $_SESSION['student_id'] = $student_id;
+            $_SESSION['just_authenticated'] = true;
 
             header("Location: student/assessment.php?type=baseline");
             exit;
