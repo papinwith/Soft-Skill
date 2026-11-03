@@ -76,6 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $pdo->prepare("UPDATE `$table` SET password = ? WHERE id = ?")->execute([password_hash($password, PASSWORD_DEFAULT), $id]);
                 }
             }
+            log_action($pdo, "$role." . $action, $username);
             header("Location: manage_users.php?role=$role&success=" . ($action === 'add' ? 'Added' : 'Updated')); exit;
         }
         if (!empty($fieldErrors)) {
@@ -84,8 +85,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     } elseif ($action === 'delete') {
         $id = (int)($_POST['id'] ?? 0);
+        $uname = $pdo->prepare("SELECT username FROM `$table` WHERE id = ?"); $uname->execute([$id]); $uname = $uname->fetchColumn();
         $pdo->prepare("DELETE FROM `$table` WHERE id = ?")->execute([$id]);
+        log_action($pdo, "$role.delete", $uname ?: "#$id");
         header("Location: manage_users.php?role=$role&success=Deleted"); exit;
+    } elseif ($action === 'approve' && $role === 'manager') {
+        $id = (int)($_POST['id'] ?? 0);
+        $uname = $pdo->prepare("SELECT username FROM activity_supervisors WHERE id = ?"); $uname->execute([$id]); $uname = $uname->fetchColumn();
+        $pdo->prepare("UPDATE activity_supervisors SET status = 'active' WHERE id = ?")->execute([$id]);
+        log_action($pdo, 'manager.approve', $uname ?: "#$id");
+        header("Location: manage_users.php?role=manager&success=Approved"); exit;
     }
 }
 
@@ -136,7 +145,7 @@ function user_form_fields($role, $faculties, $departments, $isEdit) { ?>
             <thead class="table-dark">
                 <tr>
                     <th>ID</th><th>Username</th><th>Name</th><th>อีเมล</th>
-                    <?php if ($role === 'student'): ?><th>รหัสนักศึกษา</th><th>คณะ/สาขา</th><th>ชั้นปี</th><?php else: ?><th>เบอร์โทร</th><?php endif; ?>
+                    <?php if ($role === 'student'): ?><th>รหัสนักศึกษา</th><th>คณะ/สาขา</th><th>ชั้นปี</th><?php else: ?><th>เบอร์โทร</th><th>สถานะ</th><?php endif; ?>
                     <th>จัดการ</th>
                 </tr>
             </thead>
@@ -155,8 +164,17 @@ function user_form_fields($role, $faculties, $departments, $isEdit) { ?>
                         <td><?= htmlspecialchars($u['year_level'] ?? '') ?></td>
                     <?php else: ?>
                         <td><?= htmlspecialchars($u['phone'] ?? '') ?></td>
+                        <td><?= ($u['status'] ?? 'active') === 'pending' ? '<span class="badge bg-warning text-dark">รออนุมัติ</span>' : '<span class="badge bg-success">ใช้งานได้</span>' ?></td>
                     <?php endif; ?>
                     <td class="text-nowrap">
+                        <?php if ($role === 'manager' && ($u['status'] ?? 'active') === 'pending'): ?>
+                        <form method="POST" class="d-inline">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="action" value="approve">
+                            <input type="hidden" name="id" value="<?= $u['id'] ?>">
+                            <button class="btn btn-sm btn-success">อนุมัติ</button>
+                        </form>
+                        <?php endif; ?>
                         <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#editModal" data-fill="<?= htmlspecialchars(json_encode($fill), ENT_QUOTES) ?>">แก้ไข</button>
                         <form method="POST" class="d-inline" onsubmit="return confirm('ยืนยันการลบข้อมูลนี้?');">
                             <?= csrf_field() ?>
@@ -167,7 +185,7 @@ function user_form_fields($role, $faculties, $departments, $isEdit) { ?>
                     </td>
                 </tr>
                 <?php endforeach; ?>
-                <?php if (empty($users)): ?><tr><td colspan="8" class="text-center">ไม่มีข้อมูล</td></tr><?php endif; ?>
+                <?php if (empty($users)): ?><tr><td colspan="<?= $role === 'student' ? 8 : 7 ?>" class="text-center">ไม่มีข้อมูล</td></tr><?php endif; ?>
             </tbody>
         </table>
         </div>

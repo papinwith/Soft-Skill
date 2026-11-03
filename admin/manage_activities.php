@@ -23,19 +23,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 save_activity($pdo, $data, $manager, $id);
                 $pdo->prepare("UPDATE activities SET manager_id = ? WHERE id = ?")->execute([$manager, $id]);
             }
+            log_action($pdo, $action === 'add' ? 'activity.add' : 'activity.edit', $data['title'] ?? null);
             header("Location: manage_activities.php?success=Saved"); exit;
         }
         $reopenModal = $action === 'add' ? 'addModal' : 'editModal';
         $reopenData = $_POST;
+        unset($reopenData['q_skill'], $reopenData['q_text']);
+        $reopenData['questions'] = $data['questions'];
     } elseif ($action === 'delete') {
-        $pdo->prepare("DELETE FROM activities WHERE id = ?")->execute([(int)($_POST['id'] ?? 0)]);
+        $id = (int)($_POST['id'] ?? 0);
+        $title = $pdo->prepare("SELECT title FROM activities WHERE id = ?"); $title->execute([$id]); $title = $title->fetchColumn();
+        $pdo->prepare("DELETE FROM assessments WHERE activity_id = ?")->execute([$id]);
+        $pdo->prepare("DELETE FROM activities WHERE id = ?")->execute([$id]);
+        log_action($pdo, 'activity.delete', $title ?: "#$id");
         header("Location: manage_activities.php?success=Deleted"); exit;
     }
 }
 
 $activities = $pdo->query("SELECT a.*, u.name as manager_name FROM activities a JOIN activity_supervisors u ON a.manager_id = u.id ORDER BY a.id DESC")->fetchAll();
 $managers = $pdo->query("SELECT id, name FROM activity_supervisors ORDER BY name")->fetchAll();
-$assessments = $pdo->query("SELECT id, title FROM assessments ORDER BY id")->fetchAll();
 $skills = $pdo->query("SELECT id, skill_name FROM soft_skills ORDER BY id")->fetchAll();
 $skillMap = activity_skill_map($pdo);
 
@@ -71,7 +77,7 @@ function manager_select($managers) { ?>
                         'start_date' => $a['start_date'], 'end_date' => $a['end_date'],
                         'registration_close_at' => datetime_local_value($a['registration_close_at']),
                         'location' => $a['location'], 'capacity' => $a['capacity'],
-                        'status' => $a['status'], 'assessment_id' => $a['assessment_id'], 'skills' => $skillMap[$a['id']] ?? []]; ?>
+                        'status' => $a['status'], 'skills' => $skillMap[$a['id']] ?? [], 'questions' => activity_custom_questions($pdo, $a['id'])]; ?>
                 <tr>
                     <td><?= $a['id'] ?></td>
                     <td><?= htmlspecialchars($a['title']) ?></td>
@@ -108,7 +114,7 @@ function manager_select($managers) { ?>
         <h5 class="modal-title">เพิ่มกิจกรรม</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
-      <div class="modal-body"><?php manager_select($managers); activity_form_fields($assessments, $skills); ?></div>
+      <div class="modal-body"><?php manager_select($managers); activity_form_fields($skills); ?></div>
       <div class="modal-footer"><button type="submit" class="btn btn-primary">บันทึก</button></div>
     </form>
   </div>
@@ -124,7 +130,7 @@ function manager_select($managers) { ?>
         <h5 class="modal-title">แก้ไขกิจกรรม</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
-      <div class="modal-body"><?php manager_select($managers); activity_form_fields($assessments, $skills); ?></div>
+      <div class="modal-body"><?php manager_select($managers); activity_form_fields($skills); ?></div>
       <div class="modal-footer"><button type="submit" class="btn btn-warning">บันทึกการแก้ไข</button></div>
     </form>
   </div>

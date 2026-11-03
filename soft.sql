@@ -1,4 +1,4 @@
--- Install order: soft.sql -> update_schema.sql -> update_schema_2.sql -> update_schema_3.sql -> php update_schema_4.php -> update_schema_5.sql -> php update_schema_6.php
+-- Install order: soft.sql -> update_schema.sql -> update_schema_2.sql -> update_schema_3.sql -> php update_schema_4.php -> update_schema_5.sql -> php update_schema_6.php -> update_schema_7.sql -> update_schema_8.sql -> update_schema_9.sql -> update_schema_10.sql -> update_schema_11.sql -> update_schema_12.sql -> update_schema_13.sql
 -- (schema_4 and schema_6 are PHP scripts, not .sql: schema_4 migrates data and repoints
 -- foreign keys, and schema_6 inserts Thai question text where the `mysql` CLI's default
 -- charset on this machine mangles UTF-8 from a plain .sql import -- both run via `php ...`)

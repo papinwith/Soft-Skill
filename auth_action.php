@@ -19,6 +19,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (count($matches) === 1) { $user = $matches[0]; $role = 'student'; }
         }
 
+        if ($user && password_verify($password, $user['password']) && $role === 'manager' && ($user['status'] ?? 'active') === 'pending') {
+            header("Location: index.php?error=" . urlencode("บัญชีผู้จัดกิจกรรมของคุณกำลังรอการอนุมัติจาก Admin กรุณารอการติดต่อกลับ"));
+            exit;
+        }
+
         if ($user && password_verify($password, $user['password'])) {
             session_regenerate_id(true);
             $_SESSION['user_id'] = $user['id'];
@@ -43,7 +48,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $name = trim($_POST['name'] ?? '');
         $email = trim($_POST['email'] ?? '') ?: null;
 
-        $fail = function ($msg) { header("Location: register.php?error=" . urlencode($msg)); exit; };
+        $regRolePage = $regRole === 'manager' ? 'manager_register.php' : 'register.php';
+        $fail = function ($msg) use ($regRolePage) { header("Location: $regRolePage?error=" . urlencode($msg)); exit; };
 
         if ($username === '' || $name === '') $fail("กรุณากรอกข้อมูลที่จำเป็นให้ครบ");
         $pwError = password_strength_error($password);
@@ -58,16 +64,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $conflict = identifier_conflict($pdo, $username, null, null, $email);
             if ($conflict) $fail($conflict);
 
-            $stmt = $pdo->prepare("INSERT INTO activity_supervisors (username, password, name, email, phone) VALUES (?, ?, ?, ?, ?)");
+            $stmt = $pdo->prepare("INSERT INTO activity_supervisors (username, password, name, email, phone, status) VALUES (?, ?, ?, ?, ?, 'pending')");
             if ($stmt->execute([$username, $hashed_password, $name, $email, $phone])) {
-                $new_user_id = $pdo->lastInsertId();
-                session_regenerate_id(true);
-                $_SESSION['user_id'] = $new_user_id;
-                $_SESSION['role'] = 'manager';
-                $_SESSION['name'] = $name;
-                $_SESSION['student_id'] = null;
-
-                header("Location: manager/dashboard.php");
+                // Notify the central organizer-side contact -- there's no admins.email column
+                // to send to -- so a new application doesn't just sit unnoticed until someone
+                // checks the admin page (issu.md #37).
+                $centralId = central_manager_id($pdo);
+                $centralEmail = null;
+                if ($centralId) {
+                    $emailStmt = $pdo->prepare("SELECT email FROM activity_supervisors WHERE id = ?");
+                    $emailStmt->execute([$centralId]);
+                    $centralEmail = $emailStmt->fetchColumn();
+                }
+                if ($centralEmail) {
+                    send_mail($centralEmail, 'มีผู้สมัครเป็นผู้ดูแลกิจกรรมใหม่รอการอนุมัติ',
+                        "มีผู้สมัครเป็นผู้ดูแลกิจกรรมใหม่ในระบบ รอการอนุมัติจาก Admin:\n\nชื่อ: $name\nUsername: $username\n\nกรุณาเข้าไปตรวจสอบและอนุมัติที่หน้า \"จัดการผู้ดูแลกิจกรรม\" ในระบบ Admin");
+                }
+                header("Location: index.php?success=" . urlencode("สมัครสำเร็จ บัญชีผู้จัดกิจกรรมของคุณกำลังรอการอนุมัติจาก Admin ก่อนเข้าใช้งานได้"));
                 exit;
             }
             $fail("เกิดข้อผิดพลาดในการบันทึกข้อมูล");

@@ -31,6 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $pdo->prepare("UPDATE departments SET faculty_id = ?, name = ? WHERE id = ?")->execute([$faculty_id, $name, $id]);
                     $pdo->prepare("UPDATE students SET department = ?, faculty_id = ? WHERE department_id = ?")->execute([$name, $faculty_id, $id]);
                 }
+                log_action($pdo, "department.$action", $name);
                 header('Location: manage_departments.php?success=Saved'); exit;
             } catch (PDOException $e) {
                 $fieldErrors['name'] = ($e->errorInfo[1] ?? 0) == 1062 ? 'ข้อมูลนี้มีอยู่แล้ว' : 'ไม่สามารถบันทึกข้อมูลได้';
@@ -40,9 +41,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $reopenData = $_POST;
     } elseif ($action === 'delete_faculty') {
         $pdo->prepare("DELETE FROM faculties WHERE id = ?")->execute([$id]);
+        log_action($pdo, 'department.delete_faculty', "#$id");
         header('Location: manage_departments.php?success=Saved'); exit;
     } elseif ($action === 'delete_department') {
         $pdo->prepare("DELETE FROM departments WHERE id = ?")->execute([$id]);
+        log_action($pdo, 'department.delete_department', "#$id");
         header('Location: manage_departments.php?success=Saved'); exit;
     }
 }

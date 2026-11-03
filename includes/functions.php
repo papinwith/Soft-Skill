@@ -97,6 +97,139 @@ function find_account($pdo, $identifier) {
     return [null, null];
 }
 
+// The one "central" activity_supervisors account (oldest by id) that organizer-side
+// registration defers to -- the notification recipient (issu.md #37) and the only account
+// allowed to directly create other organizer accounts (issu.md #38).
+function central_manager_id($pdo) {
+    $id = $pdo->query("SELECT id FROM activity_supervisors ORDER BY id LIMIT 1")->fetchColumn();
+    return $id ? (int)$id : null;
+}
+
+// Styled stand-in for a bare die() when a page can't be shown (stale/invalid link, no longer
+// accessible, etc.) -- a raw die() dumps unstyled text with no way back, which is jarring
+// when it's reached via a URL copied from an old browser tab (issu.md #33). $backHref
+// defaults to going back one page via JS so callers don't need to know where "back" is.
+function render_error_page($message, $backHref = null) {
+    include __DIR__ . '/header.php';
+    ?>
+    <div class="row justify-content-center">
+        <div class="col-md-7">
+            <div class="card shadow border-danger">
+                <div class="card-body text-center py-5">
+                    <i class="bi bi-exclamation-triangle text-danger" style="font-size: 2.5rem;"></i>
+                    <p class="mt-3 mb-4 fs-5"><?= htmlspecialchars($message) ?></p>
+                    <?php if ($backHref): ?>
+                        <a href="<?= htmlspecialchars($backHref) ?>" class="btn btn-primary"><i class="bi bi-arrow-left"></i> กลับ</a>
+                    <?php else: ?>
+                        <a href="javascript:history.back()" class="btn btn-primary"><i class="bi bi-arrow-left"></i> กลับ</a>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php
+    include __DIR__ . '/footer.php';
+    exit;
+}
+
+// Classifies each question in $questions (plain strings) against $skills (rows with id,
+// skill_name) using the real model, for the bulk "add many questions at once" flow
+// (issu.md #44). Returns [index => skill_id] for whatever it could confidently parse --
+// indices it couldn't classify are simply absent, so the caller can fall back to asking the
+// admin to pick manually rather than silently guessing wrong.
+function classify_questions_by_skill($questions, $skills) {
+    if (!$questions) return [];
+    $skillLines = [];
+    foreach (array_values($skills) as $i => $s) $skillLines[] = ($i + 1) . ". " . $s['skill_name'];
+    $qLines = [];
+    foreach (array_values($questions) as $i => $q) $qLines[] = ($i + 1) . ". " . $q;
+
+    $system = "คุณเป็นผู้ช่วยจัดหมวดหมู่คำถามแบบประเมิน Soft Skill ให้ตรงกับทักษะที่เกี่ยวข้องมากที่สุดเพียงทักษะเดียว ตอบเฉพาะรูปแบบที่กำหนดเท่านั้น ห้ามมีคำอธิบายอื่นใด";
+    $prompt = "รายชื่อทักษะที่เลือกได้ (เลือกได้เฉพาะชื่อในรายการนี้เท่านั้น):\n" . implode("\n", $skillLines)
+        . "\n\nคำถามที่ต้องจัดหมวดหมู่:\n" . implode("\n", $qLines)
+        . "\n\nตอบทีละบรรทัดตามจำนวนคำถามข้างต้น รูปแบบ \"หมายเลขคำถาม: ชื่อทักษะ\" เท่านั้น เช่น \"1: Communication\"";
+
+    $resp = call_ollama($prompt, $system);
+    $result = [];
+    if ($resp) {
+        foreach (explode("\n", trim($resp)) as $line) {
+            if (!preg_match('/^\s*(\d+)\s*[:.\)]\s*(.+?)\s*$/', $line, $m)) continue;
+            $idx = (int)$m[1] - 1;
+            $guess = trim($m[2]);
+            foreach ($skills as $s) {
+                if (mb_stripos($guess, $s['skill_name']) !== false || mb_stripos($s['skill_name'], $guess) !== false) {
+                    $result[$idx] = (int)$s['id'];
+                    break;
+                }
+            }
+        }
+    }
+    return $result;
+}
+
+// Few-shot style anchors drawn directly from soft_skill_training_dataset.md / (1).md, keyed by
+// skill name, so AI-generated questions (issu.md #45) match the real dataset's tone/phrasing
+// instead of inventing a different style from scratch.
+const QUESTION_STYLE_EXAMPLES = [
+    'Communication' => [
+        'เมื่อต้องนำเสนอข้อมูลที่มีความซับซ้อนให้ผู้อื่นฟัง คุณสามารถสรุปให้เข้าใจง่ายได้ดีเพียงใด',
+        'คุณรับฟังความคิดเห็นของผู้อื่นโดยไม่พูดขัดจังหวะแม้มุมมองจะแตกต่างกันบ่อยแค่ไหน',
+        'หากเกิดความเข้าใจผิดในการทำงาน คุณเลือกที่จะจับเข่าคุยเพื่อปรับความเข้าใจทันทีหรือไม่',
+    ],
+    'Teamwork' => [
+        'คุณให้ความช่วยเหลือเพื่อนร่วมทีมเมื่อเห็นว่าเขากำลังโหลดงานหนักแม้งานนั้นจะไม่ใช่นักงานของคุณ',
+        'เมื่อทีมประสบความสำเร็จ คุณให้เกียรติและยกความดีความชอบให้เพื่อนร่วมทีมมากน้อยเพียงใด',
+        'หากมีเพื่อนในกลุ่มไม่ยอมทำงานตามที่ได้รับมอบหมาย คุณจะมีวิธีจัดการอย่างไร',
+    ],
+    'Problem Solving' => [
+        'เมื่อเจออุปสรรคที่ไม่คาดคิดในการทำงาน คุณสามารถตั้งสติและวิเคราะห์สาเหตุได้อย่างเป็นระบบ',
+        'คุณคิดค้นทางเลือกในการแก้ไขปัญหามากกว่า 1 ทางเสมอหรือไม่',
+        'หากวิธีแก้ปัญหาแบบเดิมใช้ไม่ได้ผล คุณสามารถคิดค้นวิธีใหม่ๆ (Out of the box) ได้ดีเพียงใด',
+    ],
+    'Leadership' => [
+        'คุณสามารถสร้างแรงบันดาลใจและกระตุ้นให้ผู้อื่นอยากทำงานให้ประสบความสำเร็จได้ดีเพียงใด',
+        'คุณมอบหมายงาน (Delegate) ได้เหมาะสมกับความรู้และความถนัดของคนในทีมหรือไม่',
+        'เมื่อทีมเกิดความท้อแท้ คุณมีวิธีสร้างขวัญและกำลังใจให้ทีมกลับมามีพลังได้อย่างไร',
+    ],
+    'Working under pressure' => [
+        'เมื่อต้องปรับเปลี่ยนระบบ เทคโนโลยี หรือเทคนิคการทำงานใหม่ๆ คุณเรียนรู้ได้รวดเร็วเพียงใด',
+        'หากลำดับความสำคัญของงานเปลี่ยนแปลงกะทันหัน คุณปรับเปลี่ยนสมาธิและแผนงานได้ดีเพียงใด',
+        'คุณสามารถทำงานอย่างมีประสิทธิภาพภายใต้สภาวะกดดันหรือมีการเปลี่ยนแปลงสูงได้ดีเพียงใด',
+    ],
+];
+
+// Generates $count new self-assessment questions for $skillName using the real model,
+// grounded in the training dataset's own phrasing style (issu.md #45) and told to avoid
+// $existingTexts so it doesn't just repeat what's already in the question bank. Returns a
+// plain array of question strings (may be fewer than $count if parsing/the model falls short).
+function generate_questions_for_skill($skillName, $count, $existingTexts = []) {
+    $examples = QUESTION_STYLE_EXAMPLES[$skillName] ?? [];
+    $exampleBlock = $examples ? "ตัวอย่างสไตล์คำถามที่ใช้ในระบบนี้สำหรับทักษะนี้:\n- " . implode("\n- ", $examples) : '';
+    $avoidBlock = $existingTexts ? "\n\nห้ามแต่งคำถามที่ซ้ำหรือความหมายเดียวกับคำถามที่มีอยู่แล้วนี้:\n- " . implode("\n- ", array_slice($existingTexts, 0, 30)) : '';
+
+    $system = "คุณเป็นผู้ช่วยแต่งคำถามแบบประเมินตนเอง (Self-Assessment) ด้าน Soft Skill ให้ระบบประเมินทักษะนักศึกษา ตอบเฉพาะรายการคำถามตามรูปแบบที่กำหนดเท่านั้น ห้ามมีคำอธิบายอื่นใด";
+    $prompt = "แต่งคำถามแบบประเมินตนเองภาษาไทยใหม่ $count ข้อ สำหรับทักษะ \"$skillName\" โดยเลียนแบบสไตล์ตัวอย่างด้านล่าง (ลักษณะคำถามปลายเปิดหรือให้ประเมินระดับตนเอง ไม่ใช่คำถามแบบตอบถูก/ผิด)\n\n$exampleBlock$avoidBlock\n\nตอบเป็นรายการคำถาม $count ข้อ บรรทัดละ 1 ข้อ ขึ้นต้นด้วยหมายเลข เช่น \"1. ...\" ห้ามมีข้อความอื่นนอกจากรายการคำถาม";
+
+    $resp = call_ollama($prompt, $system);
+    $result = [];
+    if ($resp) {
+        foreach (explode("\n", trim($resp)) as $line) {
+            if (preg_match('/^\s*\d+[.\)]\s*(.+?)\s*$/', $line, $m) && mb_strlen($m[1]) > 5) {
+                $result[] = $m[1];
+            }
+        }
+    }
+    return array_slice($result, 0, $count);
+}
+
+// Records an admin/manager action to the audit log (issu.md #28), snapshotting who did it from
+// the session rather than an FK, since the actor can be in any of the three account tables.
+function log_action($pdo, $action, $detail = null) {
+    if (!isset($_SESSION['role'], $_SESSION['user_id'])) return;
+    $stmt = $pdo->prepare("INSERT INTO activity_logs (actor_role, actor_id, actor_name, action, detail) VALUES (?, ?, ?, ?, ?)");
+    $stmt->execute([$_SESSION['role'], (int)$_SESSION['user_id'], $_SESSION['name'] ?? '', $action, $detail]);
+}
+
 // Returns an error message when the username / student ID / email would collide with another
 // account. $exclude is [table, id] of the account being edited (so it doesn't conflict with
 // itself), or null when adding.
@@ -184,6 +317,13 @@ function activity_assessment_id($pdo, $activity_id) {
     $s->execute([$activity_id]);
     $id = $s->fetchColumn();
     return $id ? (int)$id : 1;
+}
+
+function activity_target_skills($pdo, $activity_id) {
+    $s = $pdo->prepare("SELECT s.id, s.skill_name FROM activity_skills ask
+        JOIN soft_skills s ON s.id = ask.skill_id WHERE ask.activity_id = ? ORDER BY s.id");
+    $s->execute([$activity_id]);
+    return $s->fetchAll();
 }
 
 function get_assessment_questions($pdo, $assessment_id) {

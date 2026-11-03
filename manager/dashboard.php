@@ -1,9 +1,19 @@
 <?php
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 check_login('manager');
-include '../includes/header.php';
-
 $manager_id = $_SESSION['user_id'];
+
+// The central organizer account's only job is creating other organizer accounts (issu.md
+// #39) -- it doesn't run its own activities, so its "dashboard" is that page directly.
+if ($manager_id === central_manager_id($pdo)) {
+    header('Location: create_organizer.php'); exit;
+}
+
+include '../includes/header.php';
+?>
+<?php if (isset($_GET['error'])): ?><div class="alert alert-danger"><?= htmlspecialchars($_GET['error']) ?></div><?php endif; ?>
+<?php
 $myActivityCount = $pdo->prepare("SELECT COUNT(*) FROM activities WHERE manager_id = ?");
 $myActivityCount->execute([$manager_id]);
 $myActivityCount = $myActivityCount->fetchColumn();
@@ -59,9 +69,6 @@ $responsesCount = $responsesCount->fetchColumn();
                     </a>
                     <a href="tracking_reports.php" class="list-group-item list-group-item-action list-group-item-info d-flex justify-content-between align-items-center">
                         ตรวจสอบผลการประเมินและติดตามการพัฒนา <span class="badge bg-info text-dark rounded-pill"><i class="bi bi-graph-up"></i></span>
-                    </a>
-                    <a href="manage_staff.php" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                        เพิ่มผู้ดูแลกิจกรรมคนอื่น <span class="badge bg-secondary rounded-pill"><i class="bi bi-person-plus"></i></span>
                     </a>
                 </div>
             </div>

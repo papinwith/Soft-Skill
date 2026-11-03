@@ -39,6 +39,9 @@ include 'includes/header.php';
                     <div class="text-center mt-3">
                         <span>ยังไม่มีบัญชีผู้ใช้งานใช่ไหม? <a href="register.php" class="text-decoration-none">สมัครสมาชิกสำหรับนักศึกษา</a></span>
                     </div>
+                    <div class="text-center mt-1">
+                        <a href="manager_register.php" class="text-decoration-none small text-muted">สมัครเป็นผู้ดูแลกิจกรรม (Activity Organizer)</a>
+                    </div>
                 </form>
             </div>
         </div>

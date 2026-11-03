@@ -16,6 +16,30 @@ function fillForm(form, data) {
     if (data.department_id !== undefined && form.elements['department_id']) {
         form.elements['department_id'].value = data.department_id === null ? '' : data.department_id;
     }
+
+    // Rebuild the activity question-row builder from data.questions (array of
+    // {skill_id, text}), using the "+ เพิ่มคำถาม" button's own blank-row markup as the
+    // template so it stays in sync with whatever question_row_html() rendered server-side.
+    var qWrap = form.querySelector('.question-rows-wrap');
+    if (qWrap && data.questions !== undefined) {
+        var qContainer = qWrap.querySelector('.question-rows');
+        var addBtn = qWrap.querySelector('.add-question-row');
+        var template = addBtn ? addBtn.getAttribute('data-template') : '';
+        qContainer.innerHTML = '';
+        var rows = (data.questions && data.questions.length) ? data.questions : [null];
+        rows.forEach(function (q) {
+            var tmp = document.createElement('div');
+            tmp.innerHTML = template;
+            var rowEl = tmp.firstElementChild;
+            if (q) {
+                var sel = rowEl.querySelector('select[name="q_skill[]"]');
+                var inp = rowEl.querySelector('input[name="q_text[]"]');
+                if (sel) sel.value = q.skill_id || '';
+                if (inp) inp.value = q.text || '';
+            }
+            qContainer.appendChild(rowEl);
+        });
+    }
 }
 
 // Clears any is-invalid state / inline messages left over from a previous failed submit.
@@ -62,6 +86,89 @@ document.addEventListener('show.bs.modal', function (e) {
     if (!form) return;
     clearFieldErrors(form);
     fillForm(form, data);
+});
+
+// Activity question-row builder: "+ เพิ่มคำถาม" clones the button's own template row;
+// the per-row "x" removes it (or just clears it, if it's the last row left).
+document.addEventListener('click', function (e) {
+    if (e.target.classList.contains('add-question-row')) {
+        var wrap = e.target.closest('.question-rows-wrap');
+        var container = wrap.querySelector('.question-rows');
+        var tmp = document.createElement('div');
+        tmp.innerHTML = e.target.getAttribute('data-template');
+        container.appendChild(tmp.firstElementChild);
+    } else if (e.target.classList.contains('remove-question-row')) {
+        var row = e.target.closest('.question-row');
+        var rows = row.parentElement;
+        if (rows.children.length > 1) {
+            row.remove();
+        } else {
+            row.querySelector('select').value = '';
+            row.querySelector('input').value = '';
+        }
+    }
+});
+
+// Flash banners (success/error from a redirect) are one-time status messages, not a log
+// readers need to keep open -- fade them out automatically after 5s (issu.md #32).
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.alert.alert-success, .alert.alert-danger').forEach(function (el) {
+        if (el.closest('.modal')) return;
+        setTimeout(function () {
+            el.style.transition = 'opacity 0.4s';
+            el.style.opacity = '0';
+            setTimeout(function () { el.remove(); }, 400);
+        }, 5000);
+    });
+});
+
+// Confirm-before-submit + "analyzing" overlay for forms marked with data-confirm-submit
+// (self-assessment submission, issu.md #31) -- shows a review step with a way back to
+// editing, and a visible spinner while the slow AI call runs before the redirect lands.
+function showAnalyzingOverlay(text) {
+    var overlay = document.createElement('div');
+    overlay.id = 'analyzingOverlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(255,255,255,0.92);z-index:2000;display:flex;flex-direction:column;align-items:center;justify-content:center;';
+    overlay.innerHTML =
+        '<div class="spinner-border text-primary mb-3" style="width:3rem;height:3rem;" role="status"></div>' +
+        '<div class="fw-bold fs-5">' + text + '</div>';
+    document.body.appendChild(overlay);
+}
+
+function showConfirmSubmitModal(form) {
+    var modalEl = document.getElementById('confirmSubmitModal');
+    if (!modalEl) {
+        modalEl = document.createElement('div');
+        modalEl.id = 'confirmSubmitModal';
+        modalEl.className = 'modal fade';
+        modalEl.tabIndex = -1;
+        modalEl.innerHTML =
+            '<div class="modal-dialog modal-dialog-centered"><div class="modal-content">' +
+            '<div class="modal-header"><h5 class="modal-title"></h5></div>' +
+            '<div class="modal-body"></div>' +
+            '<div class="modal-footer">' +
+            '<button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">กลับไปแก้ไข</button>' +
+            '<button type="button" class="btn btn-primary js-confirm-submit-ok">ยืนยันส่งคำตอบ</button>' +
+            '</div></div></div>';
+        document.body.appendChild(modalEl);
+    }
+    modalEl.querySelector('.modal-title').textContent = form.dataset.confirmSubmit || 'ยืนยันการส่ง';
+    modalEl.querySelector('.modal-body').textContent = form.dataset.confirmBody || 'ยืนยันที่จะส่งข้อมูลนี้หรือไม่?';
+    modalEl.querySelector('.js-confirm-submit-ok').onclick = function () {
+        window.bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+        showAnalyzingOverlay(form.dataset.loadingText || 'กำลังดำเนินการ กรุณารอสักครู่...');
+        form.dataset.confirmed = '1';
+        form.submit();
+    };
+    window.bootstrap.Modal.getOrCreateInstance(modalEl).show();
+}
+
+document.addEventListener('submit', function (e) {
+    var form = e.target;
+    if (!form.hasAttribute('data-confirm-submit') || form.dataset.confirmed === '1') return;
+    e.preventDefault();
+    if (!form.reportValidity()) return;
+    showConfirmSubmitModal(form);
 });
 
 // Dependent faculty -> department dropdown

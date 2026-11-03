@@ -25,8 +25,15 @@ function csrf_field() {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $sent = $_POST['csrf_token'] ?? '';
     if (!is_string($sent) || !hash_equals($_SESSION['csrf_token'], $sent)) {
-        http_response_code(403);
-        die("Invalid CSRF token. กรุณากลับไปโหลดหน้าใหม่แล้วลองอีกครั้ง");
+        // A form left open in an old/stale tab carries an outdated token once the session's
+        // token has rotated -- send them somewhere useful instead of a bare 403 dump. If
+        // they're still logged in, index.php would just bounce them onward and silently
+        // drop the error, so land on their own dashboard instead.
+        $msg = urlencode('หน้านี้หมดอายุหรือถูกเปิดค้างไว้นานเกินไป กรุณาลองใหม่อีกครั้ง');
+        $landing = ['admin' => '/Soft-Skill/admin/dashboard.php', 'manager' => '/Soft-Skill/manager/dashboard.php', 'student' => '/Soft-Skill/student/profile.php'];
+        $target = $landing[$_SESSION['role'] ?? ''] ?? '/Soft-Skill/index.php';
+        header("Location: $target?error=$msg");
+        exit;
     }
 }
 
@@ -90,7 +97,13 @@ function check_login($role = null) {
     $_SESSION['last_activity'] = time();
 
     if ($role !== null && $_SESSION['role'] !== $role) {
-        die("Access Denied: You do not have permission to view this page.");
+        // Session cookies are shared per-browser: if a different tab logged in as another
+        // role in the meantime, a stale link/URL copied from this tab's old page would
+        // otherwise land on a bare "Access Denied" dump (issu.md #33). Send them to
+        // wherever their *current* session's role actually belongs instead.
+        $landing = ['admin' => '/Soft-Skill/admin/dashboard.php', 'manager' => '/Soft-Skill/manager/dashboard.php', 'student' => '/Soft-Skill/student/profile.php'];
+        header('Location: ' . ($landing[$_SESSION['role']] ?? '/Soft-Skill/index.php'));
+        exit;
     }
 
     // Auto redirect student to baseline if not completed

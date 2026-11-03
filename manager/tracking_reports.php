@@ -3,6 +3,7 @@ require_once '../config/db.php';
 require_once '../includes/functions.php';
 check_login('manager');
 $manager_id = $_SESSION['user_id'];
+if ($manager_id === central_manager_id($pdo)) { header('Location: create_organizer.php'); exit; }
 
 $activities = $pdo->prepare("SELECT id, title FROM activities WHERE manager_id = ? ORDER BY id DESC");
 $activities->execute([$manager_id]);

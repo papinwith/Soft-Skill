@@ -1,7 +1,9 @@
 <?php
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 check_login('manager');
 $manager_id = $_SESSION['user_id'];
+if ($manager_id === central_manager_id($pdo)) { header('Location: create_organizer.php'); exit; }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
@@ -30,6 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             if ($current !== false && strpos($result, 'error=') === false) {
                 $pdo->prepare("UPDATE activity_participants SET status = ? WHERE activity_id = ? AND student_id = ?")->execute([$status, $activity_id, $student_id]);
+                log_action($pdo, 'participant.status', "activity #$activity_id, student #$student_id -> $status");
             }
         }
         $pdo->commit();

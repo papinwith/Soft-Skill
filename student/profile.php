@@ -48,6 +48,7 @@ include '../includes/header.php';
             <a href="analysis_report.php" class="btn btn-outline-info"><i class="bi bi-bar-chart-fill"></i> รายงานวิเคราะห์จาก AI</a>
         </div>
     </div>
+    <?php if (isset($_GET['error'])): ?><div class="alert alert-danger"><?= htmlspecialchars($_GET['error']) ?></div><?php endif; ?>
     <?php if (isset($_GET['success'])): ?><div class="alert alert-success">ดำเนินการเรียบร้อยแล้ว</div><?php endif; ?>
 
     <div class="row">
@@ -110,11 +111,13 @@ include '../includes/header.php';
 </div>
 
 <?php if (!empty($rows)): ?>
-<form method="POST" class="profile-analysis-float">
+<form method="POST" class="profile-analysis-float"
+      data-confirm-submit="วิเคราะห์ใหม่ด้วย AI"
+      data-confirm-body="ต้องการเริ่มการวิเคราะห์ AI ใหม่หรือไม่? อาจใช้เวลาสักครู่"
+      data-loading-text="กำลังวิเคราะห์ด้วย AI กรุณารอสักครู่...">
     <?= csrf_field() ?>
     <input type="hidden" name="action" value="regenerate">
-    <button type="submit" class="btn btn-primary btn-lg rounded-pill shadow" title="เริ่มการวิเคราะห์ AI ใหม่"
-        onclick="return confirm('เริ่มการวิเคราะห์ AI ใหม่หรือไม่? อาจใช้เวลาสักครู่');">
+    <button type="submit" class="btn btn-primary btn-lg rounded-pill shadow" title="เริ่มการวิเคราะห์ AI ใหม่">
         <i class="bi bi-arrow-clockwise"></i> วิเคราะห์ใหม่ด้วย AI
     </button>
 </form>

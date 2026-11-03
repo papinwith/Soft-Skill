@@ -15,16 +15,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (empty($fieldErrors)) {
             if ($action === 'add') {
                 $pdo->prepare("INSERT INTO soft_skills (skill_name, description) VALUES (?, ?)")->execute([$name, $desc]);
+                log_action($pdo, 'skill.add', $name);
                 header("Location: manage_skills.php?success=Added"); exit;
             } else {
                 $pdo->prepare("UPDATE soft_skills SET skill_name = ?, description = ? WHERE id = ?")->execute([$name, $desc, (int)($_POST['id'] ?? 0)]);
+                log_action($pdo, 'skill.edit', $name);
                 header("Location: manage_skills.php?success=Updated"); exit;
             }
         }
         $reopenModal = $action === 'add' ? 'addModal' : 'editModal';
         $reopenData = $_POST;
     } elseif ($action === 'delete') {
-        $pdo->prepare("DELETE FROM soft_skills WHERE id = ?")->execute([(int)($_POST['id'] ?? 0)]);
+        $id = (int)($_POST['id'] ?? 0);
+        $sname = $pdo->prepare("SELECT skill_name FROM soft_skills WHERE id = ?"); $sname->execute([$id]); $sname = $sname->fetchColumn();
+        $pdo->prepare("DELETE FROM soft_skills WHERE id = ?")->execute([$id]);
+        log_action($pdo, 'skill.delete', $sname ?: "#$id");
         header("Location: manage_skills.php?success=Deleted"); exit;
     }
 }

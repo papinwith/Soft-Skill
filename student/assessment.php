@@ -6,8 +6,8 @@ $student_id = $_SESSION['user_id'];
 $activity_id = isset($_GET['activity_id']) ? (int)$_GET['activity_id'] : null;
 $type = $_GET['type'] ?? 'pre';
 
-if (!in_array($type, ['baseline', 'pre', 'post'], true)) die("Invalid assessment type");
-if ($type !== 'baseline' && !$activity_id) die("Invalid Activity ID");
+if (!in_array($type, ['baseline', 'pre', 'post'], true)) render_error_page('ไม่พบแบบประเมินที่ต้องการ (ลิงก์อาจไม่ถูกต้องหรือหมดอายุแล้ว)', 'profile.php');
+if ($type !== 'baseline' && !$activity_id) render_error_page('ไม่พบกิจกรรมที่ต้องการ (ลิงก์อาจไม่ถูกต้องหรือหมดอายุแล้ว)', 'activities.php');
 
 $existingId = null;
 
@@ -25,15 +25,15 @@ if ($type === 'baseline') {
     $act = $pdo->prepare("SELECT title FROM activities WHERE id = ?");
     $act->execute([$activity_id]);
     $activityData = $act->fetch();
-    if (!$activityData) die("Activity not found.");
+    if (!$activityData) render_error_page('ไม่พบกิจกรรมนี้ อาจถูกลบไปแล้ว', 'activities.php');
 
     $part = $pdo->prepare("SELECT status FROM activity_participants WHERE activity_id = ? AND student_id = ?");
     $part->execute([$activity_id, $student_id]);
     $status = $part->fetchColumn();
-    if ($status === false) die("คุณยังไม่ได้สมัครเข้าร่วมกิจกรรมนี้");
-    if ($status === 'rejected') die("คำขอเข้าร่วมกิจกรรมนี้ถูกปฏิเสธ");
+    if ($status === false) render_error_page('คุณยังไม่ได้สมัครเข้าร่วมกิจกรรมนี้', 'activities.php');
+    if ($status === 'rejected') render_error_page('คำขอเข้าร่วมกิจกรรมนี้ถูกปฏิเสธ', 'activities.php');
     if ($type === 'post' && $status !== 'attended') {
-        die("ทำแบบประเมินหลังเข้าร่วมกิจกรรมได้เมื่อผู้ดูแลกิจกรรมยืนยันว่าคุณเข้าร่วมกิจกรรมแล้ว");
+        render_error_page('ทำแบบประเมินหลังเข้าร่วมกิจกรรมได้เมื่อผู้ดูแลกิจกรรมยืนยันว่าคุณเข้าร่วมกิจกรรมแล้ว', 'activities.php');
     }
 
     $check = $pdo->prepare("SELECT id FROM student_assessments WHERE student_id = ? AND activity_id = ? AND type = ? LIMIT 1");
@@ -42,10 +42,12 @@ if ($type === 'baseline') {
     if ($type === 'post') {
         $pre = $pdo->prepare("SELECT id FROM student_assessments WHERE student_id = ? AND activity_id = ? AND type = 'pre' LIMIT 1");
         $pre->execute([$student_id, $activity_id]);
-        if (!$pre->fetch()) die("กรุณาทำแบบประเมินก่อนเข้าร่วม (Pre-test) ก่อน");
+        if (!$pre->fetch()) render_error_page('กรุณาทำแบบประเมินก่อนเข้าร่วม (Pre-test) ก่อน', 'activities.php');
     }
     $assessment_id = activity_assessment_id($pdo, $activity_id);
 }
+
+$targetSkills = $activity_id ? activity_target_skills($pdo, $activity_id) : [];
 
 $questions = get_assessment_questions($pdo, $assessment_id);
 $assessmentDesc = $pdo->prepare("SELECT description FROM assessments WHERE id = ?");
@@ -124,6 +126,18 @@ $backHref = $type === 'baseline' ? 'profile.php' : 'activities.php';
     <div class="card-header bg-primary text-white py-3 fw-bold fs-5">
         กิจกรรม: <?= htmlspecialchars($activityData['title']) ?>
     </div>
+    <?php if (!empty($targetSkills)): ?>
+    <div class="card-body bg-white border-bottom py-2 px-4">
+        <p class="small mb-0">
+            <i class="bi bi-bullseye text-primary"></i>
+            <strong>กิจกรรมนี้มุ่งพัฒนาทักษะ:</strong>
+            <?php foreach ($targetSkills as $ts): ?>
+                <span class="badge bg-primary-subtle text-primary border border-primary me-1"><?= htmlspecialchars($ts['skill_name']) ?></span>
+            <?php endforeach; ?>
+            <span class="text-muted">(แบบประเมินด้านล่างยังคงถามครบทุกทักษะ เพื่อใช้วัดผลเทียบก่อน-หลังในทุกด้าน แต่ทักษะที่ระบุข้างต้นคือเป้าหมายหลักของกิจกรรมนี้)</span>
+        </p>
+    </div>
+    <?php endif; ?>
     <?php if ($assessmentDesc): ?>
     <div class="card-body bg-white border-bottom py-2 px-4">
         <p class="small text-muted mb-0"><?= nl2br(htmlspecialchars($assessmentDesc)) ?></p>
@@ -133,7 +147,10 @@ $backHref = $type === 'baseline' ? 'profile.php' : 'activities.php';
         <?php if (empty($questions)): ?>
             <div class="alert alert-warning mb-0">ยังไม่มีคำถามในแบบประเมินนี้ กรุณาติดต่อผู้ดูแลระบบ</div>
         <?php else: ?>
-        <form method="POST">
+        <form method="POST"
+              data-confirm-submit="ยืนยันการส่งคำตอบ"
+              data-confirm-body="ตรวจสอบคำตอบให้ครบถ้วนแล้วหรือยัง? เมื่อยืนยัน ระบบจะส่งคำตอบและวิเคราะห์ผลด้วย AI ให้ทันที"
+              data-loading-text="กำลังวิเคราะห์ด้วย AI กรุณารอสักครู่...">
             <?= csrf_field() ?>
             <?php
             $currentSkill = '';

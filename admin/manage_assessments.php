@@ -15,9 +15,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (empty($fieldErrors)) {
             if ($action === 'add') {
                 $pdo->prepare("INSERT INTO assessments (title, description) VALUES (?, ?)")->execute([$title, $desc]);
+                log_action($pdo, 'assessment.add', $title);
                 header("Location: manage_assessments.php?success=Added"); exit;
             } else {
                 $pdo->prepare("UPDATE assessments SET title = ?, description = ? WHERE id = ?")->execute([$title, $desc, (int)($_POST['id'] ?? 0)]);
+                log_action($pdo, 'assessment.edit', $title);
                 header("Location: manage_assessments.php?success=Updated"); exit;
             }
         }
@@ -27,11 +29,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $id = (int)($_POST['id'] ?? 0);
         if ($id === 1) { header("Location: manage_assessments.php?error=" . urlencode('ไม่สามารถลบแบบประเมินมาตรฐานได้ (ใช้กับแบบประเมินสมาชิกใหม่)')); exit; }
         $pdo->prepare("DELETE FROM assessments WHERE id = ?")->execute([$id]);
+        log_action($pdo, 'assessment.delete', "#$id");
         header("Location: manage_assessments.php?success=Deleted"); exit;
     }
 }
 
-$assessments = $pdo->query("SELECT a.*, (SELECT COUNT(*) FROM assessment_questions q WHERE q.assessment_id = a.id) AS q_count FROM assessments a")->fetchAll();
+$assessments = $pdo->query("SELECT a.*, m.name AS manager_name, act.title AS activity_title,
+        (SELECT COUNT(*) FROM assessment_questions q WHERE q.assessment_id = a.id) AS q_count
+    FROM assessments a
+    LEFT JOIN activity_supervisors m ON m.id = a.created_by_manager_id
+    LEFT JOIN activities act ON act.id = a.activity_id")->fetchAll();
 
 include '../includes/header.php';
 
@@ -51,7 +58,7 @@ function assessment_fields() { ?>
     <div class="card-body">
         <table class="table table-bordered table-striped align-middle">
             <thead class="table-dark">
-                <tr><th>ID</th><th>ชื่อแบบประเมิน</th><th>รายละเอียด</th><th>จำนวนคำถาม</th><th>จัดการ</th></tr>
+                <tr><th>ID</th><th>ชื่อแบบประเมิน</th><th>รายละเอียด</th><th>เจ้าของ</th><th>กิจกรรม</th><th>จำนวนคำถาม</th><th>จัดการ</th></tr>
             </thead>
             <tbody>
                 <?php foreach ($assessments as $a): ?>
@@ -59,6 +66,8 @@ function assessment_fields() { ?>
                     <td><?= $a['id'] ?></td>
                     <td><?= htmlspecialchars($a['title']) ?></td>
                     <td><?= htmlspecialchars($a['description'] ?? '') ?></td>
+                    <td><?= $a['manager_name'] ? '<span class="badge bg-warning text-dark">' . htmlspecialchars($a['manager_name']) . '</span>' : '<span class="badge bg-dark">มาตรฐาน (Admin)</span>' ?></td>
+                    <td><?= $a['activity_title'] ? htmlspecialchars($a['activity_title']) : '<span class="text-muted">-</span>' ?></td>
                     <td><?= $a['q_count'] ?></td>
                     <td class="text-nowrap">
                         <a href="assessment_questions.php?id=<?= $a['id'] ?>" class="btn btn-sm btn-info">จัดการคำถาม</a>
@@ -72,7 +81,7 @@ function assessment_fields() { ?>
                     </td>
                 </tr>
                 <?php endforeach; ?>
-                <?php if (empty($assessments)): ?><tr><td colspan="5" class="text-center">ไม่มีข้อมูล</td></tr><?php endif; ?>
+                <?php if (empty($assessments)): ?><tr><td colspan="7" class="text-center">ไม่มีข้อมูล</td></tr><?php endif; ?>
             </tbody>
         </table>
     </div>

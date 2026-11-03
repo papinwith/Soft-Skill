@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>รายงานผลการประเมินโมเดล AI (Soft-Skill)</title>
+<style>
+  :root { --ok:#1a7f37; --bad:#c0392b; --bg:#f6f7f9; --card:#ffffff; --border:#e1e4e8; --text:#1b1f23; --muted:#6a737d; }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", "Noto Sans Thai", sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 24px; line-height: 1.6; }
+  h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin-bottom: 20px; font-size: .9rem; }
+  .summary { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+  .stat { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px 20px; min-width: 150px; }
+  .stat .n { font-size: 1.6rem; font-weight: 700; }
+  .stat .l { color: var(--muted); font-size: .8rem; }
+  .case { background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 18px; overflow: hidden; }
+  .case-head { padding: 12px 18px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+  .case-head h3 { margin: 0; font-size: 1rem; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: .78rem; font-weight: 600; color: #fff; }
+  .badge.pass { background: var(--ok); }
+  .badge.fail { background: var(--bad); }
+  .badge.fallback { background: #b58105; }
+  .case-body { padding: 0 18px 18px; display: none; }
+  .case.open .case-body { display: block; }
+  table { border-collapse: collapse; width: 100%; margin: 8px 0; font-size: .88rem; }
+  th, td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; }
+  th { background: #f0f2f4; }
+  .checks li { margin-bottom: 4px; }
+  .checks .ok::before { content: "✓ "; color: var(--ok); font-weight: 700; }
+  .checks .no::before { content: "✗ "; color: var(--bad); font-weight: 700; }
+  .ai-block { background: #f0f7ff; border: 1px solid #cfe3ff; border-radius: 8px; padding: 10px 14px; margin: 8px 0; white-space: pre-wrap; font-size: .9rem; }
+  .meta { color: var(--muted); font-size: .8rem; margin-top: 4px; }
+</style>
+</head>
+<body>
+<h1>รายงานผลการประเมินโมเดล AI (Soft-Skill)</h1>
+<div class="sub">สร้างเมื่อ 2026-10-29 07:32:42 — ทดสอบด้วยโมเดลจริงผ่าน Ollama (ไม่ใช่ rule-based fallback) ตามเกณฑ์ grounding ที่กำหนดใน Modelfile (issu.md #24, #25, #27)</div>
+
+<div class="summary">
+  <div class="stat"><div class="n">6/8</div><div class="l">เคสที่ผ่านทุกเกณฑ์</div></div>
+  <div class="stat"><div class="n">51.2s</div><div class="l">เวลาตอบเฉลี่ย</div></div>
+  <div class="stat"><div class="n">8/8</div><div class="l">ตอบจากโมเดลจริง (ไม่ fallback)</div></div>
+</div>
+
+<div class="case" id="case-0">
+  <div class="case-head" onclick="document.getElementById('case-0').classList.toggle('open')">
+    <h3>เคสที่ 1: คะแนนสูงทุกด้าน (ทุกทักษะ &gt;= 80%)</h3>
+    <span>
+            <span class="badge pass">PASS</span>
+    </span>
+  </div>
+  <div class="case-body">
+    <table>
+      <thead><tr><th>ทักษะ</th><th>คะแนน</th><th>%</th></tr></thead>
+      <tbody>
+                <tr><td>Communication</td><td>18/20</td><td>90%</td></tr>
+                <tr><td>Teamwork</td><td>17/20</td><td>85%</td></tr>
+                <tr><td>Problem Solving</td><td>19/20</td><td>95%</td></tr>
+                <tr><td>Leadership</td><td>16/20</td><td>80%</td></tr>
+                <tr><td>Working under pressure</td><td>17/20</td><td>85%</td></tr>
+              </tbody>
+    </table>
+    <div class="meta">
+      คะแนนรวม: 87% &nbsp;|&nbsp; ทักษะโดดเด่นที่คาดหวัง: Problem Solving, Communication      &nbsp;|&nbsp; เวลาตอบ: 57.9s &nbsp;|&nbsp; แหล่งที่มา: ollama    </div>
+
+    <div class="ai-block"><strong>Analysis:</strong>
+นักศึกษาทดสอบมีผลการประเมินโดยรวมอยู่ในระดับดีเยี่ยม โดยเฉพาะทักษะ Problem Solving และ Communication ที่โดดเด่นมาก ในขณะที่ทุกด้านอื่นๆ ก็มีคะแนนสูงกว่า 80% ซึ่งแสดงถึงความสามารถในการทำงานร่วมกับผู้อื่นและการแก้ปัญหาได้อย่างมีประสิทธิภาพ</div>
+    <div class="ai-block"><strong>Recommendation:</strong>
+เนื่องจากนักศึกษาทดสอบมีทักษะที่โดดเด่นอยู่แล้ว ควรเน้นการพัฒนาทักษะที่มีอยู่ให้ดียิ่งขึ้น เช่น การฝึกฝนทักษะการสื่อสารเพื่อสร้างความเข้าใจและโน้มน้าวผู้ฟังได้อย่างมีประสิทธิภาพมากขึ้น และพัฒนาทักษะการเป็นผู้นำในการทำงานร่วมกับทีมให้ดียิ่งขึ้น</div>
+
+    <strong>ผลการตรวจสอบ grounding:</strong>
+    <ul class="checks">
+            <li class="ok">ใช้โมเดลจริง (ไม่ fallback)</li>
+            <li class="ok">กล่าวถึงทักษะโดดเด่นที่ถูกต้อง: Problem Solving</li>
+            <li class="ok">กล่าวถึงทักษะโดดเด่นที่ถูกต้อง: Communication</li>
+            <li class="ok">ไม่เรียก &quot;Communication&quot; ว่าโดดเด่นทั้งที่ไม่ถึงเกณฑ์</li>
+            <li class="ok">ไม่เรียก &quot;Problem Solving&quot; ว่าโดดเด่นทั้งที่ไม่ถึงเกณฑ์</li>
+            <li class="ok">มีคำแนะนำ (Recommendation) ไม่ว่างเปล่า</li>
+          </ul>
+  </div>
+</div>
+<div class="case" id="case-1">
+  <div class="case-head" onclick="document.getElementById('case-1').classList.toggle('open')">
+    <h3>เคสที่ 2: คะแนนต่ำทุกด้าน (ทุกทักษะ &lt; 60%)</h3>
+    <span>
+            <span class="badge fail">FAIL</span>
+    </span>
+  </div>
+  <div class="case-body">
+    <table>
+      <thead><tr><th>ทักษะ</th><th>คะแนน</th><th>%</th></tr></thead>
+      <tbody>
+                <tr><td>Communication</td><td>5/20</td><td>25%</td></tr>
+                <tr><td>Teamwork</td><td>6/20</td><td>30%</td></tr>
+                <tr><td>Problem Solving</td><td>4/20</td><td>20%</td></tr>
+                <tr><td>Leadership</td><td>7/20</td><td>35%</td></tr>
+                <tr><td>Working under pressure</td><td>5/20</td><td>25%</td></tr>
+              </tbody>
+    </table>
+    <div class="meta">
+      คะแนนรวม: 27% &nbsp;|&nbsp; ทักษะโดดเด่นที่คาดหวัง: ไม่มี      &nbsp;|&nbsp; เวลาตอบ: 41.9s &nbsp;|&nbsp; แหล่งที่มา: ollama    </div>
+
+    <div class="ai-block"><strong>Analysis:</strong>
+นักศึกษาทดสอบมีคะแนนรวมทุกด้านอยู่ที่ 27% ซึ่งแสดงให้เห็นว่ายังมีทักษะ Soft Skills ที่ต้องพัฒนาเพิ่มเติม โดยเฉพาะในด้าน Problem Solving และ Communication ที่คะแนนต่ำกว่า 80% นอกจากนี้ยังไม่มีทักษะใดที่โดดเด่นเป็นพิเศษ</div>
+    <div class="ai-block"><strong>Recommendation:</strong>
+เพื่อพัฒนาทักษะที่ควรเสริม ควรเริ่มจากการฝึกฝนการสื่อสารและการแก้ปัญหา โดยอาจเข้าร่วมกิจกรรมหรือเวิร์กช็อปที่เน้นการพัฒนาทักษะเหล่านี้ เช่น การฝึกสนทนาแบบกลุ่ม การทำกิจกรรมทีม หรือการเรียนรู้วิธีการคิดเชิงตรรกะและวิเคราะห์ปัญหาอย่างเป็นระบบ</div>
+
+    <strong>ผลการตรวจสอบ grounding:</strong>
+    <ul class="checks">
+            <li class="ok">ใช้โมเดลจริง (ไม่ fallback)</li>
+            <li class="no">ไม่มีทักษะโดดเด่น -&gt; ต้องใช้ประโยคที่กำหนดตรงๆ</li>
+            <li class="ok">มีคำแนะนำ (Recommendation) ไม่ว่างเปล่า</li>
+          </ul>
+  </div>
+</div>
+<div class="case" id="case-2">
+  <div class="case-head" onclick="document.getElementById('case-2').classList.toggle('open')">
+    <h3>เคสที่ 3: คะแนนผสม (มีทั้งเด่นและอ่อน)</h3>
+    <span>
+            <span class="badge fail">FAIL</span>
+    </span>
+  </div>
+  <div class="case-body">
+    <table>
+      <thead><tr><th>ทักษะ</th><th>คะแนน</th><th>%</th></tr></thead>
+      <tbody>
+                <tr><td>Communication</td><td>17/20</td><td>85%</td></tr>
+                <tr><td>Teamwork</td><td>10/20</td><td>50%</td></tr>
+                <tr><td>Problem Solving</td><td>13/20</td><td>65%</td></tr>
+                <tr><td>Leadership</td><td>8/20</td><td>40%</td></tr>
+                <tr><td>Working under pressure</td><td>15/20</td><td>75%</td></tr>
+              </tbody>
+    </table>
+    <div class="meta">
+      คะแนนรวม: 63% &nbsp;|&nbsp; ทักษะโดดเด่นที่คาดหวัง: Communication, Working under pressure      &nbsp;|&nbsp; เวลาตอบ: 42.3s &nbsp;|&nbsp; แหล่งที่มา: ollama    </div>
+
+    <div class="ai-block"><strong>Analysis:</strong>
+นักศึกษาทดสอบมีผลการประเมินโดยรวมอยู่ที่ 63% โดยทักษะที่โดดเด่นคือ Communication และ Working under pressure ในขณะที่ Leadership และ Teamwork เป็นทักษะที่ควรพัฒนาเพื่อให้ดีขึ้น</div>
+    <div class="ai-block"><strong>Recommendation:</strong>
+นักศึกษาทดสอบสามารถฝึกฝนทักษะการสื่อสารและการทำงานภายใต้ความกดดันให้ดียิ่งขึ้นได้ โดยการเข้าร่วมกิจกรรมหรืออบรมเพิ่มเติมที่เกี่ยวข้อง ส่วนในด้าน Leadership และ Teamwork ควรฝึกฝนการเป็นผู้นำและทำงานร่วมกับผู้อื่นอย่างมีประสิทธิภาพมากขึ้น เช่น การเข้าร่วมกลุ่มสนทนาหรือโครงการที่ต้องใช้ความร่วมมือกับคนอื่น</div>
+
+    <strong>ผลการตรวจสอบ grounding:</strong>
+    <ul class="checks">
+            <li class="ok">ใช้โมเดลจริง (ไม่ fallback)</li>
+            <li class="ok">กล่าวถึงทักษะโดดเด่นที่ถูกต้อง: Communication</li>
+            <li class="ok">กล่าวถึงทักษะโดดเด่นที่ถูกต้อง: Working under pressure</li>
+            <li class="ok">ไม่เรียก &quot;Communication&quot; ว่าโดดเด่นทั้งที่ไม่ถึงเกณฑ์</li>
+            <li class="no">ไม่เรียก &quot;Teamwork&quot; ว่าโดดเด่นทั้งที่ไม่ถึงเกณฑ์</li>
+            <li class="no">ไม่เรียก &quot;Leadership&quot; ว่าโดดเด่นทั้งที่ไม่ถึงเกณฑ์</li>
+            <li class="ok">ไม่เรียก &quot;Working under pressure&quot; ว่าโดดเด่นทั้งที่ไม่ถึงเกณฑ์</li>
+            <li class="ok">มีคำแนะนำ (Recommendation) ไม่ว่างเปล่า</li>
+          </ul>
+  </div>
+</div>
+<div class="case" id="case-3">
+  <div class="case-head" onclick="document.getElementById('case-3').classList.toggle('open')">
+    <h3>เคสที่ 4: ทักษะเด่นเพียงด้านเดียว (ต้องไม่ยกอีกด้านขึ้นมาแทน)</h3>
+    <span>
+            <span class="badge pass">PASS</span>
+    </span>
+  </div>
+  <div class="case-body">
+    <table>
+      <thead><tr><th>ทักษะ</th><th>คะแนน</th><th>%</th></tr></thead>
+      <tbody>
+                <tr><td>Communication</td><td>19/20</td><td>95%</td></tr>
+                <tr><td>Teamwork</td><td>8/20</td><td>40%</td></tr>
+                <tr><td>Problem Solving</td><td>7/20</td><td>35%</td></tr>
+                <tr><td>Leadership</td><td>6/20</td><td>30%</td></tr>
+                <tr><td>Working under pressure</td><td>9/20</td><td>45%</td></tr>
+              </tbody>
+    </table>
+    <div class="meta">
+      คะแนนรวม: 49% &nbsp;|&nbsp; ทักษะโดดเด่นที่คาดหวัง: Communication      &nbsp;|&nbsp; เวลาตอบ: 63.5s &nbsp;|&nbsp; แหล่งที่มา: ollama    </div>
+
+    <div class="ai-block"><strong>Analysis:</strong>
+นักศึกษาทดสอบมีคะแนนรวมทุกด้านอยู่ที่ 49% ซึ่งแสดงให้เห็นว่ายังมีพื้นที่ในการพัฒนาในทักษะต่างๆ โดยเฉพาะในด้าน Leadership และ Problem Solving ที่คะแนนต่ำกว่า 80% ในขณะที่ Communication เป็นทักษะที่โดดเด่นที่สุดของนักศึกษา</div>
+    <div class="ai-block"><strong>Recommendation:</strong>
+เพื่อพัฒนาทักษะ Leadership และ Problem Solving นักศึกษาควรฝึกการมอบหมายงานโดยไม่ micro-manage, ให้ feedback/ชื่นชมลูกทีมอย่างเจาะจง, ฝึกไกล่เกลี่ยความขัดแย้งแบบฟังทั้งสองฝ่ายเท่าเทียมกัน และฝึกวางวิสัยทัศน์หรือเป้าหมายให้ชัดเจนเพื่อให้ทีมเดินไปทิศทางเดียวกัน นอกจากนี้ ควรฝึกการตั้งคำถาม &quot;ทำไม&quot; ซ้ำหลายครั้งเพื่อหาต้นตอปัญหา, ฝึกคิดทางเลือกอย่างน้อย 3 ทางก่อนตัดสินใจ, ทำ pilot test ก่อนลงมือจริง และจดบันทึกวิธีแก้ปัญหาที่สำเร็จไว้เป็นคลังความรู้</div>
+
+    <strong>ผลการตรวจสอบ grounding:</strong>
+    <ul class="checks">
+            <li class="ok">ใช้โมเดลจริง (ไม่ fallback)</li>
+            <li class="ok">กล่าวถึงทักษะโดดเด่นที่ถูกต้อง: Communication</li>
+            <li class="ok">ไม่เรียก &quot;Communication&quot; ว่าโดดเด่นทั้งที่ไม่ถึงเกณฑ์</li>
+            <li class="ok">มีคำแนะนำ (Recommendation) ไม่ว่างเปล่า</li>
+          </ul>
+  </div>
+</div>
+<div class="case" id="case-4">
+  <div class="case-head" onclick="document.getElementById('case-4').classList.toggle('open')">
+    <h3>เคสที่ 5: ขอบเขตพอดี 60% (ต้องนับเป็นโดดเด่น)</h3>
+    <span>
+            <span class="badge pass">PASS</span>
+    </span>
+  </div>
+  <div class="case-body">
+    <table>
+      <thead><tr><th>ทักษะ</th><th>คะแนน</th><th>%</th></tr></thead>
+      <tbody>
+                <tr><td>Communication</td><td>12/20</td><td>60%</td></tr>
+                <tr><td>Teamwork</td><td>9/20</td><td>45%</td></tr>
+                <tr><td>Problem Solving</td><td>9/20</td><td>45%</td></tr>
+                <tr><td>Leadership</td><td>9/20</td><td>45%</td></tr>
+                <tr><td>Working under pressure</td><td>9/20</td><td>45%</td></tr>
+              </tbody>
+    </table>
+    <div class="meta">
+      คะแนนรวม: 48% &nbsp;|&nbsp; ทักษะโดดเด่นที่คาดหวัง: Communication      &nbsp;|&nbsp; เวลาตอบ: 78.3s &nbsp;|&nbsp; แหล่งที่มา: ollama    </div>
+
+    <div class="ai-block"><strong>Analysis:</strong>
+นักศึกษาทดสอบมีคะแนนรวมทุกด้านอยู่ที่ 48% ซึ่งแสดงให้เห็นว่ายังมีพื้นที่ในการพัฒนาทักษะ Soft Skills อีกมาก ทักษะที่โดดเด่นของนักศึกษาในครั้งนี้คือ Communication โดยมีคะแนน 60% ส่วนทักษะที่ควรพัฒนา ได้แก่ Teamwork และ Problem Solving ซึ่งมีคะแนนต่ำกว่า 80%</div>
+    <div class="ai-block"><strong>Recommendation:</strong>
+เพื่อพัฒนาทักษะ Teamwork นักศึกษาควรฝึกการทำงานร่วมกับเพื่อนร่วมทีมอย่างสม่ำเสมอ โดยการสังเกตจุดแข็ง-จุดอ่อนของเพื่อนร่วมทีม และเปิดใจรับฟังความคิดเห็นแย้งอย่างเปิดใจ นอกจากนี้ การอัปเดตความคืบหน้างานให้ทีมทราบสม่ำเสมอโดยไม่ต้องรอให้ถาม ก็จะช่วยเสริมสร้างความร่วมมือในทีมได้ดีขึ้น
+
+สำหรับทักษะ Problem Solving นักศึกษาควรฝึกการตั้งคำถาม &quot;ทำไม&quot; ซ้ำหลายครั้งเพื่อหาต้นตอปัญหา และคิดทางเลือกอย่างน้อย 3 ทางก่อนตัดสินใจ นอกจากนี้ การทำ pilot test ก่อนลงมือจริง และการแยกแยะ &quot;อาการของปัญหา&quot; กับ &quot;ต้นเหตุของปัญหา&quot; ก็จะช่วยให้สามารถแก้ไขปัญหาได้อย่างมีประสิทธิภาพมากขึ้น</div>
+
+    <strong>ผลการตรวจสอบ grounding:</strong>
+    <ul class="checks">
+            <li class="ok">ใช้โมเดลจริง (ไม่ fallback)</li>
+            <li class="ok">กล่าวถึงทักษะโดดเด่นที่ถูกต้อง: Communication</li>
+            <li class="ok">มีคำแนะนำ (Recommendation) ไม่ว่างเปล่า</li>
+          </ul>
+  </div>
+</div>
+<div class="case" id="case-5">
+  <div class="case-head" onclick="document.getElementById('case-5').classList.toggle('open')">
+    <h3>เคสที่ 6: กิจกรรมใช้แบบประเมินที่ผู้จัดตั้งเอง มีแค่ 2 ทักษะ (issu.md #27)</h3>
+    <span>
+            <span class="badge pass">PASS</span>
+    </span>
+  </div>
+  <div class="case-body">
+    <table>
+      <thead><tr><th>ทักษะ</th><th>คะแนน</th><th>%</th></tr></thead>
+      <tbody>
+                <tr><td>Teamwork</td><td>17/20</td><td>85%</td></tr>
+                <tr><td>Leadership</td><td>9/20</td><td>45%</td></tr>
+              </tbody>
+    </table>
+    <div class="meta">
+      คะแนนรวม: 65% &nbsp;|&nbsp; ทักษะโดดเด่นที่คาดหวัง: Teamwork      &nbsp;|&nbsp; เวลาตอบ: 39.1s &nbsp;|&nbsp; แหล่งที่มา: ollama    </div>
+
+    <div class="ai-block"><strong>Analysis:</strong>
+นักศึกษาทดสอบมีผลการประเมินโดยรวมอยู่ที่ 65% โดยทักษะ Teamwork เป็นทักษะที่โดดเด่นที่สุด ด้วยคะแนน 85% ในขณะที่ Leadership คือทักษะที่ควรพัฒนา เนื่องจากมีคะแนนเพียง 45%</div>
+    <div class="ai-block"><strong>Recommendation:</strong>
+เพื่อพัฒนาทักษะ Leadership นักศึกษาควรฝึกการเป็นผู้นำโดยการมอบหมายงานให้กับสมาชิกในทีมและไม่ micro-manage, ให้ feedback/ชื่นชมลูกทีมอย่างเจาะจง, และฝึกวางวิสัยทัศน์หรือเป้าหมายให้ชัดเจนเพื่อให้ทีมเดินไปทิศทางเดียวกัน</div>
+
+    <strong>ผลการตรวจสอบ grounding:</strong>
+    <ul class="checks">
+            <li class="ok">ใช้โมเดลจริง (ไม่ fallback)</li>
+            <li class="ok">กล่าวถึงทักษะโดดเด่นที่ถูกต้อง: Teamwork</li>
+            <li class="ok">ไม่เรียก &quot;Teamwork&quot; ว่าโดดเด่นทั้งที่ไม่ถึงเกณฑ์</li>
+            <li class="ok">มีคำแนะนำ (Recommendation) ไม่ว่างเปล่า</li>
+          </ul>
+  </div>
+</div>
+<div class="case" id="case-6">
+  <div class="case-head" onclick="document.getElementById('case-6').classList.toggle('open')">
+    <h3>เคสที่ 7: Baseline สมาชิกใหม่</h3>
+    <span>
+            <span class="badge pass">PASS</span>
+    </span>
+  </div>
+  <div class="case-body">
+    <table>
+      <thead><tr><th>ทักษะ</th><th>คะแนน</th><th>%</th></tr></thead>
+      <tbody>
+                <tr><td>Communication</td><td>11/20</td><td>55%</td></tr>
+                <tr><td>Teamwork</td><td>14/20</td><td>70%</td></tr>
+                <tr><td>Problem Solving</td><td>10/20</td><td>50%</td></tr>
+                <tr><td>Leadership</td><td>8/20</td><td>40%</td></tr>
+                <tr><td>Working under pressure</td><td>12/20</td><td>60%</td></tr>
+              </tbody>
+    </table>
+    <div class="meta">
+      คะแนนรวม: 55% &nbsp;|&nbsp; ทักษะโดดเด่นที่คาดหวัง: Teamwork, Working under pressure      &nbsp;|&nbsp; เวลาตอบ: 34.7s &nbsp;|&nbsp; แหล่งที่มา: ollama    </div>
+
+    <div class="ai-block"><strong>Analysis:</strong>
+นักศึกษาทดสอบมีคะแนนรวมทุกด้านอยู่ที่ 55% โดยมีทักษะ Teamwork และ Working under pressure ที่โดดเด่น ในขณะที่ Leadership และ Problem Solving เป็นทักษะที่ควรพัฒนาเพิ่มเติม</div>
+    <div class="ai-block"><strong>Recommendation:</strong>
+เพื่อพัฒนาทักษะ Leadership ควรฝึกการมอบหมายงานโดยไม่ micro-manage และให้ feedback/ชื่นชมลูกทีมอย่างเจาะจง ส่วนทักษะ Problem Solving สามารถฝึกตั้งคำถาม &quot;ทำไม&quot; ซ้ำหลายครั้งเพื่อหาต้นตอปัญหา และคิดทางเลือกอย่างน้อย 3 ทางก่อนตัดสินใจ</div>
+
+    <strong>ผลการตรวจสอบ grounding:</strong>
+    <ul class="checks">
+            <li class="ok">ใช้โมเดลจริง (ไม่ fallback)</li>
+            <li class="ok">กล่าวถึงทักษะโดดเด่นที่ถูกต้อง: Teamwork</li>
+            <li class="ok">กล่าวถึงทักษะโดดเด่นที่ถูกต้อง: Working under pressure</li>
+            <li class="ok">ไม่เรียก &quot;Teamwork&quot; ว่าโดดเด่นทั้งที่ไม่ถึงเกณฑ์</li>
+            <li class="ok">ไม่เรียก &quot;Working under pressure&quot; ว่าโดดเด่นทั้งที่ไม่ถึงเกณฑ์</li>
+            <li class="ok">มีคำแนะนำ (Recommendation) ไม่ว่างเปล่า</li>
+          </ul>
+  </div>
+</div>
+<div class="case" id="case-7">
+  <div class="case-head" onclick="document.getElementById('case-7').classList.toggle('open')">
+    <h3>เคสที่ 8: Post-test พร้อมเทียบผลก่อนเข้าร่วม (มีพัฒนาการชัดเจน)</h3>
+    <span>
+            <span class="badge pass">PASS</span>
+    </span>
+  </div>
+  <div class="case-body">
+    <table>
+      <thead><tr><th>ทักษะ</th><th>คะแนน</th><th>%</th></tr></thead>
+      <tbody>
+                <tr><td>Communication</td><td>17/20</td><td>85%</td></tr>
+                <tr><td>Teamwork</td><td>16/20</td><td>80%</td></tr>
+                <tr><td>Problem Solving</td><td>15/20</td><td>75%</td></tr>
+                <tr><td>Leadership</td><td>14/20</td><td>70%</td></tr>
+                <tr><td>Working under pressure</td><td>16/20</td><td>80%</td></tr>
+              </tbody>
+    </table>
+    <div class="meta">
+      คะแนนรวม: 78% &nbsp;|&nbsp; ทักษะโดดเด่นที่คาดหวัง: Communication, Teamwork      &nbsp;|&nbsp; เวลาตอบ: 52s &nbsp;|&nbsp; แหล่งที่มา: ollama    </div>
+
+    <div class="ai-block"><strong>Analysis:</strong>
+นักศึกษาทดสอบมีคะแนนรวมทุกด้านอยู่ที่ 78% หลังจากเข้าร่วมกิจกรรมค่ายผู้นำนักศึกษา โดยทักษะที่โดดเด่นได้แก่ Communication และ Teamwork ซึ่งมีคะแนนสูงถึง 85% และ 80% ตามลำดับ ในขณะที่ Leadership และ Problem Solving ยังต้องการการพัฒนาเพิ่มเติม เนื่องจากมีคะแนนอยู่ในระดับต่ำกว่า 80%</div>
+    <div class="ai-block"><strong>Recommendation:</strong>
+เพื่อพัฒนาทักษะ Leadership และ Problem Solving นักศึกษาควรฝึกการวางแผนและจัดการงานที่ซับซ้อนมากขึ้น รวมถึงการเรียนรู้จากประสบการณ์และการทำงานร่วมกับผู้อื่นเพื่อเสริมสร้างความสามารถในการแก้ปัญหาและการตัดสินใจ นอกจากนี้ การเข้าร่วมอบรมหรือเวิร์กช็อปที่เกี่ยวข้องกับการพัฒนาทักษะเหล่านี้ก็เป็นอีกทางเลือกหนึ่งที่น่าสนใจ</div>
+
+    <strong>ผลการตรวจสอบ grounding:</strong>
+    <ul class="checks">
+            <li class="ok">ใช้โมเดลจริง (ไม่ fallback)</li>
+            <li class="ok">กล่าวถึงทักษะโดดเด่นที่ถูกต้อง: Communication</li>
+            <li class="ok">กล่าวถึงทักษะโดดเด่นที่ถูกต้อง: Teamwork</li>
+            <li class="ok">มีคำแนะนำ (Recommendation) ไม่ว่างเปล่า</li>
+          </ul>
+  </div>
+</div>
+
+<script>
+document.querySelectorAll('.case').forEach(function (el, i) { if (i === 0) el.classList.add('open'); });
+</script>
+</body>
+</html>

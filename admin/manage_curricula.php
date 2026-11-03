@@ -31,12 +31,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $pdo->prepare("UPDATE curricula SET department_id = ?, name = ?, year_level = ?, education_level = ? WHERE id = ?")
                     ->execute([$department_id, $name, $year_level, $education_level, $id]);
             }
+            log_action($pdo, $action === 'add' ? 'curriculum.add' : 'curriculum.edit', $name);
             header('Location: manage_curricula.php?success=Saved'); exit;
         }
         $reopenModal = $action === 'add' ? 'addModal' : 'editModal';
         $reopenData = $_POST;
     } elseif ($action === 'delete') {
         $pdo->prepare("DELETE FROM curricula WHERE id = ?")->execute([$id]);
+        log_action($pdo, 'curriculum.delete', "#$id");
         header('Location: manage_curricula.php?success=Saved'); exit;
     }
 }

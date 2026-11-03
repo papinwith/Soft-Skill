@@ -4,6 +4,7 @@ require_once '../includes/activity_helpers.php';
 require_once '../includes/functions.php';
 check_login('manager');
 $manager_id = $_SESSION['user_id'];
+if ($manager_id === central_manager_id($pdo)) { header('Location: create_organizer.php'); exit; }
 
 $fieldErrors = [];
 $reopenData = [];
@@ -15,18 +16,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (empty($fieldErrors)) {
             if ($action === 'add') {
                 save_activity($pdo, $data, $manager_id);
+                log_action($pdo, 'activity.add', $data['title'] ?? null);
             } else {
                 $id = (int)($_POST['id'] ?? 0);
                 $own = $pdo->prepare("SELECT id FROM activities WHERE id = ? AND manager_id = ?");
                 $own->execute([$id, $manager_id]);
-                if ($own->fetch()) save_activity($pdo, $data, $manager_id, $id);
+                if ($own->fetch()) {
+                    save_activity($pdo, $data, $manager_id, $id);
+                    log_action($pdo, 'activity.edit', $data['title'] ?? null);
+                }
             }
             header("Location: my_activities.php?success=Saved"); exit;
         }
         $reopenModal = $action === 'add' ? 'addModal' : 'editModal';
         $reopenData = $_POST;
+        unset($reopenData['q_skill'], $reopenData['q_text']);
+        $reopenData['questions'] = $data['questions'];
     } elseif ($action === 'delete') {
-        $pdo->prepare("DELETE FROM activities WHERE id = ? AND manager_id = ?")->execute([(int)($_POST['id'] ?? 0), $manager_id]);
+        $id = (int)($_POST['id'] ?? 0);
+        $own = $pdo->prepare("SELECT id FROM activities WHERE id = ? AND manager_id = ?");
+        $own->execute([$id, $manager_id]);
+        if ($own->fetch()) {
+            $title = $pdo->prepare("SELECT title FROM activities WHERE id = ?"); $title->execute([$id]); $title = $title->fetchColumn();
+            $pdo->prepare("DELETE FROM assessments WHERE activity_id = ?")->execute([$id]);
+            $pdo->prepare("DELETE FROM activities WHERE id = ?")->execute([$id]);
+            log_action($pdo, 'activity.delete', $title ?: "#$id");
+        }
         header("Location: my_activities.php?success=Deleted"); exit;
     }
 }
@@ -34,7 +49,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $stmt = $pdo->prepare("SELECT * FROM activities WHERE manager_id = ? ORDER BY id DESC");
 $stmt->execute([$manager_id]);
 $activities = $stmt->fetchAll();
-$assessments = $pdo->query("SELECT id, title FROM assessments ORDER BY id")->fetchAll();
 $skills = $pdo->query("SELECT id, skill_name FROM soft_skills ORDER BY id")->fetchAll();
 $skillMap = activity_skill_map($pdo);
 
@@ -60,7 +74,7 @@ include '../includes/header.php';
                         'end_date' => $a['end_date'],
                         'registration_close_at' => datetime_local_value($a['registration_close_at']),
                         'location' => $a['location'], 'capacity' => $a['capacity'], 'status' => $a['status'],
-                        'assessment_id' => $a['assessment_id'], 'skills' => $skillMap[$a['id']] ?? []]; ?>
+                        'skills' => $skillMap[$a['id']] ?? [], 'questions' => activity_custom_questions($pdo, $a['id'])]; ?>
                 <tr>
                     <td><?= $a['id'] ?></td>
                     <td><?= htmlspecialchars($a['title']) ?></td>
@@ -96,7 +110,7 @@ include '../includes/header.php';
         <h5 class="modal-title">สร้างกิจกรรมใหม่</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
-      <div class="modal-body"><?php activity_form_fields($assessments, $skills); ?></div>
+      <div class="modal-body"><?php activity_form_fields($skills); ?></div>
       <div class="modal-footer"><button type="submit" class="btn btn-primary">บันทึกกิจกรรม</button></div>
     </form>
   </div>
@@ -112,7 +126,7 @@ include '../includes/header.php';
         <h5 class="modal-title">แก้ไขกิจกรรม</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
-      <div class="modal-body"><?php activity_form_fields($assessments, $skills); ?></div>
+      <div class="modal-body"><?php activity_form_fields($skills); ?></div>
       <div class="modal-footer"><button type="submit" class="btn btn-warning">บันทึกการแก้ไข</button></div>
     </form>
   </div>

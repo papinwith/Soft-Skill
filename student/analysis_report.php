@@ -31,6 +31,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'regen
 }
 
 $preRows = $postRows = $reports = $recommended = [];
+$targetSkills = $activity_id ? activity_target_skills($pdo, $activity_id) : [];
+$targetSkillNames = array_column($targetSkills, 'skill_name');
 if ($activity_id) {
     $preRows = get_skill_scores($pdo, $student_id, $activity_id, 'pre');
     $postRows = get_skill_scores($pdo, $student_id, $activity_id, 'post');
@@ -57,10 +59,13 @@ function report_box($title, $class, $report, $activity_id, $type) { ?>
     <div class="card shadow-sm border-<?= $class ?> mb-4">
         <div class="card-header bg-<?= $class ?> text-white fw-bold py-3 d-flex justify-content-between align-items-center">
             <span><?= $title ?></span>
-            <form method="POST" class="m-0">
+            <form method="POST" class="m-0"
+                  data-confirm-submit="วิเคราะห์ใหม่ด้วย AI"
+                  data-confirm-body="ต้องการให้ AI วิเคราะห์ผลประเมินนี้ใหม่หรือไม่? อาจใช้เวลาสักครู่"
+                  data-loading-text="กำลังวิเคราะห์ด้วย AI กรุณารอสักครู่...">
                 <?= csrf_field() ?>
                 <input type="hidden" name="action" value="regenerate"><input type="hidden" name="type" value="<?= $type ?>">
-                <button class="btn btn-sm btn-light" onclick="return confirm('วิเคราะห์ใหม่ด้วย AI? อาจใช้เวลาสักครู่');">วิเคราะห์ใหม่ด้วย AI</button>
+                <button class="btn btn-sm btn-light">วิเคราะห์ใหม่ด้วย AI</button>
             </form>
         </div>
         <div class="card-body bg-light">
@@ -99,6 +104,16 @@ function report_box($title, $class, $report, $activity_id, $type) { ?>
 </div>
 
 <?php if($activity_id && !empty($labels)): ?>
+<?php if (!empty($targetSkillNames)): ?>
+<div class="alert alert-light border-primary py-2 mb-3">
+    <i class="bi bi-bullseye text-primary"></i>
+    <strong>กิจกรรม "<?= htmlspecialchars($activityTitle) ?>" มุ่งพัฒนาทักษะ:</strong>
+    <?php foreach ($targetSkillNames as $tsn): ?>
+        <span class="badge bg-primary-subtle text-primary border border-primary me-1"><?= htmlspecialchars($tsn) ?></span>
+    <?php endforeach; ?>
+    <span class="text-muted small">(ทักษะอื่นด้านล่างแสดงไว้เพื่อการติดตามภาพรวม)</span>
+</div>
+<?php endif; ?>
 <div class="row">
     <div class="col-md-5 mb-4">
         <div class="card shadow-sm border-0">
@@ -119,8 +134,8 @@ function report_box($title, $class, $report, $activity_id, $type) { ?>
                 <tbody>
                 <?php foreach (($postRows ?: $preRows) as $r):
                     $pre = $preByName[$r['skill_name']] ?? null; $post = $postByName[$r['skill_name']] ?? null; ?>
-                    <tr>
-                        <td><?= htmlspecialchars($r['skill_name']) ?></td>
+                    <tr<?= in_array($r['skill_name'], $targetSkillNames, true) ? ' class="table-primary"' : '' ?>>
+                        <td><?= in_array($r['skill_name'], $targetSkillNames, true) ? '<i class="bi bi-bullseye text-primary" title="ทักษะเป้าหมายของกิจกรรมนี้"></i> ' : '' ?><?= htmlspecialchars($r['skill_name']) ?></td>
                         <td><?= $pre ? $pre['pct'] . '%' : '-' ?></td>
                         <td><?= $post ? $post['pct'] . '%' : '-' ?></td>
                         <td><span class="badge bg-<?= $r['group']['class'] ?>"><?= $r['group']['label'] ?></span></td>
